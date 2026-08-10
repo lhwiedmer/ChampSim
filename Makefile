@@ -16,9 +16,18 @@ override REPLACEMENT_ROOT += $(addsuffix /replacement,$(MODULE_ROOT))
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))
-override CPPFLAGS += -I$(OBJ_ROOT)
-override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
-override LDLIBS   += -lCLI11 -llzma -lz -lbz2 -lfmt
+
+# 1. Defina o caminho absoluto ou relativo de onde o Ramulator 2.1 foi clonado
+RAMULATOR_DIR ?= ramulator2
+
+# 2. Adicione a pasta /src do Ramulator aos includes (-I)
+override CPPFLAGS += -I$(OBJ_ROOT) -I$(RAMULATOR_DIR)/src
+
+# 3. Adicione o diretório raiz do Ramulator para a linkagem (-L) e injete o RPATH
+override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link -L$(RAMULATOR_DIR) -Wl,-rpath=$(RAMULATOR_DIR)
+
+# 4. Adicione a biblioteca do Ramulator (-lramulator)
+override LDLIBS   += -lCLI11 -llzma -lz -lbz2 -lfmt -lramulator
 
 .PHONY: all clean compile_commands compile_commands_clean configclean test pytest maketest
 

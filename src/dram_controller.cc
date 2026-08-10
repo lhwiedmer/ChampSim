@@ -20,12 +20,20 @@
 #include <cfenv>
 #include <cmath>
 #include <fmt/core.h>
+#include <ramulator/base/base.h>
+#include <ramulator/base/config.h>
+#include <ramulator/base/factory.h>
+#include <ramulator/base/request.h>
 
 #include "deadlock.h"
 #include "instruction.h"
 #include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
 #include "util/units.h"
+
+#ifndef RAMULATOR_TX_BYTES
+#define RAMULATOR_TX_BYTES 64 // Valor padrão (DDR5) caso a flag não seja passada
+#endif
 
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
                                      std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul,
@@ -34,6 +42,42 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, 
     : champsim::operable(mc_period), queues(std::move(ul)), channel_width(chan_width),
       address_mapping(chan_width, BLOCK_SIZE / chan_width.count(), chans, bankgroups, banks, columns, ranks, rows), data_bus_period(dbus_period)
 {
+
+  static Ramulator::IFrontEnd* global_frontend = nullptr;
+  static Ramulator::IMemorySystem* global_memory = nullptr;
+
+  if (!global_frontend) {
+    auto config = Ramulator::Config::parse_config_file("config.yaml");
+
+    global_frontend = Ramulator::Factory::create_frontend(config);
+    global_memory = Ramulator::Factory::create_memory_system(config);
+
+    global_frontend->connect_memory_system(global_memory);
+    global_memory->connect_frontend(global_frontend);
+
+    if (auto* base_frontend = dynamic_cast<Ramulator::Implementation*>(global_frontend)) {
+      base_frontend->setup(global_frontend, global_memory);
+    }
+
+    if (auto* base_memory = dynamic_cast<Ramulator::Implementation*>(global_memory)) {
+      base_memory->setup(global_frontend, global_memory);
+    }
+
+    std::atexit([]() {
+      if (global_frontend) {
+        global_frontend->finalize();
+        delete global_frontend;
+      }
+      if (global_memory) {
+        global_memory->finalize();
+        delete global_memory;
+      }
+    });
+  }
+
+  ramulator_frontend = global_frontend;
+  ramulator_memory_system = global_memory;
+
   for (std::size_t i{0}; i < chans; ++i) {
     channels.emplace_back(dbus_period, mc_period, t_rp, t_rcd, t_cas, t_ras, refresh_period, refreshes_per_period, chan_width, rq_size, wq_size,
                           address_mapping);
@@ -97,10 +141,10 @@ long MEMORY_CONTROLLER::operate()
 
   initiate_requests();
 
-  for (auto& channel : channels) {
-    progress += channel._operate();
-  }
+  ramulator_frontend->tick();
+  ramulator_memory_system->tick();
 
+  progress++;
   return progress;
 }
 
@@ -516,40 +560,52 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
 
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
-  auto& channel = channels[address_mapping.get_channel(packet.address)];
-
-  if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [this](const auto& pkt) { return pkt.has_value(); });
-      rq_it != std::end(channel.RQ)) {
-    *rq_it = DRAM_CHANNEL::request_type{packet};
-    rq_it->value().forward_checked = false;
-    rq_it->value().scheduled = false;
-    rq_it->value().ready_time = current_time;
-    if (packet.response_requested)
-      rq_it->value().to_return = {&ul->returned};
-
-    return true;
+  // FAST-PATH: Se estiver no warmup, resolve a requisição instantaneamente
+  if (this->warmup) {
+    response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
+    if (packet.response_requested) {
+      ul->returned.push_back(response);
+    }
+    return true; // Aceito e concluído no mesmo ciclo
   }
 
-  return false;
+  // SIMULAÇÃO REAL (ROI): Envia para o Ramulator
+  bool accepted = ramulator_frontend->receive_external_requests(
+      Ramulator::Request::Type::Read, packet.address.to<long int>(), 0,
+      [packet, ul](Ramulator::Request& req) {
+        (void)req;
+        response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
+        if (packet.response_requested) {
+          ul->returned.push_back(response);
+        }
+      },
+      RAMULATOR_TX_BYTES);
+
+  // Tratamento da HBM4 (32 bytes)
+  if (accepted && RAMULATOR_TX_BYTES < 64) {
+    ramulator_frontend->receive_external_requests(
+        Ramulator::Request::Type::Read, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
+  }
+
+  return accepted;
 }
 
 bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
-  auto& channel = channels[address_mapping.get_channel(packet.address)];
-
-  // search for the empty index
-  if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt) { return pkt.has_value(); });
-      wq_it != std::end(channel.WQ)) {
-    *wq_it = DRAM_CHANNEL::request_type{packet};
-    wq_it->value().forward_checked = false;
-    wq_it->value().scheduled = false;
-    wq_it->value().ready_time = current_time;
-
+  // FAST-PATH: Descarta a escrita instantaneamente no warmup
+  if (this->warmup) {
     return true;
   }
 
-  ++channel.sim_stats.WQ_FULL;
-  return false;
+  bool accepted = ramulator_frontend->receive_external_requests(
+      Ramulator::Request::Type::Write, packet.address.to<long int>(), 0, [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
+
+  if (accepted && RAMULATOR_TX_BYTES < 64) {
+    ramulator_frontend->receive_external_requests(
+        Ramulator::Request::Type::Write, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
+  }
+
+  return accepted;
 }
 
 unsigned long DRAM_ADDRESS_MAPPING::swizzle_bits(champsim::address address, unsigned long segment_size, champsim::data::bits segment_offset,

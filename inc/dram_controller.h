@@ -26,6 +26,8 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <ramulator/frontend/i_frontend.h>
+#include <ramulator/memory_system/i_memory_system.h>
 
 #include "address.h"
 #include "channel.h"
@@ -204,12 +206,16 @@ class MEMORY_CONTROLLER : public champsim::operable
   champsim::chrono::picoseconds data_bus_period{};
 
 public:
+  Ramulator::IFrontEnd* ramulator_frontend;
+  Ramulator::IMemorySystem* ramulator_memory_system;
+
   std::vector<DRAM_CHANNEL> channels;
 
   MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd, std::size_t t_cas,
                     std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size,
                     std::size_t chans, champsim::data::bytes chan_width, std::size_t rows, std::size_t columns, std::size_t ranks, std::size_t bankgroups,
                     std::size_t banks, std::size_t refreshes_per_period);
+
 
   void initialize() final;
   long operate() final;
