@@ -20,6 +20,7 @@
 #include <cfenv>
 #include <cmath>
 #include <fmt/core.h>
+#include <iostream>
 #include <ramulator/base/base.h>
 #include <ramulator/base/config.h>
 #include <ramulator/base/factory.h>
@@ -35,6 +36,12 @@
 #define RAMULATOR_TX_BYTES 64 // Valor padrão (DDR5) caso a flag não seja passada
 #endif
 
+#ifndef RAMULATOR_CONFIG
+#define RAMULATOR_CONFIG "ramulator_configs/yaml/config_ddr5.yaml"
+#endif
+
+std::string ramulator_stats_path = "results/ramulator/ramulator_stats.yaml";
+
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
                                      std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
@@ -47,7 +54,8 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, 
   static Ramulator::IMemorySystem* global_memory = nullptr;
 
   if (!global_frontend) {
-    auto config = Ramulator::Config::parse_config_file("config.yaml");
+    std::cout << "Initializing Ramulator 2 Frontend and Memory System from config: " << RAMULATOR_CONFIG << std::endl;
+    auto config = Ramulator::Config::parse_config_file(RAMULATOR_CONFIG);
 
     global_frontend = Ramulator::Factory::create_frontend(config);
     global_memory = Ramulator::Factory::create_memory_system(config);
@@ -63,15 +71,36 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, 
       base_memory->setup(global_frontend, global_memory);
     }
 
+    // Registra a finalização e exportação segura
     std::atexit([]() {
-      if (global_frontend) {
+      // 1. FINALIZAÇÃO: Calcula latências e médias
+      if (global_frontend)
         global_frontend->finalize();
-        delete global_frontend;
-      }
-      if (global_memory) {
+      if (global_memory)
         global_memory->finalize();
-        delete global_memory;
+
+      // 2. EXPORTAÇÃO: Cria o arquivo e imprime os dados recursivamente
+      std::ofstream stats_out(ramulator_stats_path); // Pode usar .txt se preferir
+      if (stats_out.is_open()) {
+        // Extrai os dados do Frontend
+        if (auto* base_frontend = dynamic_cast<Ramulator::Implementation*>(global_frontend)) {
+          base_frontend->print_stats(stats_out);
+        }
+
+        // Extrai os dados do Sistema de Memória (onde estão as estatísticas que importam!)
+        if (auto* base_memory = dynamic_cast<Ramulator::Implementation*>(global_memory)) {
+          base_memory->print_stats(stats_out);
+        }
+
+        stats_out.flush();
+        stats_out.close();
       }
+
+      // 3. LIMPEZA: Destrói os ponteiros e devolve a RAM para o Linux
+      if (global_frontend)
+        delete global_frontend;
+      if (global_memory)
+        delete global_memory;
     });
   }
 

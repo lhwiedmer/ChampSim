@@ -36,6 +36,8 @@
 #include "tracereader.h"
 #include "vmem.h"
 
+extern std::string ramulator_stats_path;
+
 namespace champsim
 {
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
@@ -88,6 +90,8 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   app.add_option("--listeners", requested_listeners, "A list of the listeners to be attached to the run");
 
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
+
+  app.add_option("--ramulator-stats", ramulator_stats_path, "Caminho do arquivo de saída para as estatísticas do Ramulator 2");
 
   CLI11_PARSE(app, argc, argv);
 

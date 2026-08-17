@@ -1,0 +1,73 @@
+{
+    "executable_name": "champsim_goldencove_8c_ddr5_llc",
+    "block_size": 64,
+    "page_size": 4096,
+    "num_cores": 8,
+    "branch_predictor": "hashed_perceptron",
+    "btb": "basic_btb",
+    "core": {
+        "frequency": 2500,
+        "fetch_width": 8,
+        "decode_width": 6,
+        "dispatch_width": 6,
+        "execute_width": 12,
+        "commit_width": 8,
+        "rob_size": 512,
+        "lq_size": 192,
+        "sq_size": 114,
+        "schedule_size": 205,
+        "branch_mispredict_penalty": 15
+    },
+    "L1I": {
+        "sets": 64,
+        "ways": 8,
+        "mshrs": 16,
+        "latency": 4,
+        "prefetcher": "no"
+    },
+    "L1D": {
+        "sets": 64,
+        "ways": 12,
+        "mshrs": 16,
+        "latency": 5,
+        "prefetcher": "next_line"
+    },
+    "L2C": {
+        "sets": 2048,
+        "ways": 10,
+        "mshrs": 48,
+        "latency": 15,
+        "prefetcher": "ip_stride",
+        "replacement": "lru"
+    },
+    "LLC": {
+        "sets": 40960,
+        "ways": 12,
+        "mshrs": 192,
+        "latency": 67,
+        "prefetcher": "next_line",
+        "replacement": "lru"
+    },
+    "ITLB": {
+        "sets": 32,
+        "ways": 8,
+        "mshrs": 8
+    },
+    "DTLB": {
+        "sets": 16,
+        "ways": 6,
+        "mshrs": 8
+    },
+    "STLB": {
+        "sets": 128,
+        "ways": 16,
+        "mshrs": 16,
+        "latency": 7
+    },
+    "PTW": {
+        "mshrs": 16
+    },
+    "physical_memory": {
+        "data_rate": 6400
+    }
+}
