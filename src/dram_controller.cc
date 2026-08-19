@@ -37,7 +37,7 @@
 #endif
 
 #ifndef RAMULATOR_CONFIG
-#define RAMULATOR_CONFIG "ramulator_configs/yaml/config_ddr5.yaml"
+#define RAMULATOR_CONFIG "ramulator_configs/yaml/ddr5.yaml"
 #endif
 
 std::string ramulator_stats_path = "results/ramulator/ramulator_stats.yaml";
