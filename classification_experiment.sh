@@ -4,4 +4,4 @@
 #cd ../
 
 mkdir -p results/ramulator results/champsim
-ls traces/ | parallel --bar -j 49 './bin/champsim_goldencove_1c_ddr5_llc --warmup-instructions 200000000 --ramulator-stats results/ramulator/{/.}.yaml --json results/champsim/{/.}.json traces/{}'
+ls traces/ | parallel --bar -j 32 './bin/champsim_goldencove_1c_ddr5_llc --warmup-instructions 200000000 --ramulator-stats results/ramulator/{/.}.yaml --json results/champsim/{/.}.json traces/{}'
