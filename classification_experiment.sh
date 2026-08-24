@@ -3,5 +3,5 @@
 
 #cd ../
 
-mkdir -p results/ramulator results/champsim
+mkdir -p results/classification_prefetch/ramulator results/classification_prefetch/champsim
 ls traces/ | parallel --bar -j 32 './bin/champsim_goldencove_1c_ddr5_llc_prefetch --warmup-instructions 200000000 --ramulator-stats results/classification_prefetch/ramulator/{/.}.yaml --json results/classification_prefetch/champsim/{/.}.json traces/{}'
