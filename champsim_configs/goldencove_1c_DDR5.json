@@ -1,5 +1,5 @@
 {
-    "executable_name": "champsim_goldencove_1c_hbm4_llc",
+    "executable_name": "champsim_goldencove_1c_ddr5",
     "block_size": 64,
     "page_size": 4096,
     "num_cores": 1,
@@ -23,7 +23,7 @@
         "ways": 8,
         "mshrs": 16,
         "latency": 4,
-        "prefetcher": "next_line"
+        "prefetcher": "no"
     },
     "L1D": {
         "sets": 64,
@@ -37,16 +37,9 @@
         "ways": 10,
         "mshrs": 48,
         "latency": 15,
-        "prefetcher": "next_line",
-        "replacement": "lru"
-    },
-    "LLC": {
-        "sets": 40960,
-        "ways": 12,
-        "mshrs": 192,
-        "latency": 67,
-        "prefetcher": "no",
-        "replacement": "lru"
+        "prefetcher": "ip_stride",
+        "replacement": "lru",
+        "lower_level": "DRAM"
     },
     "ITLB": {
         "sets": 32,
@@ -68,6 +61,6 @@
         "mshrs": 16
     },
     "physical_memory": {
-        "data_rate": 8000
+        "data_rate": 6400
     }
 }

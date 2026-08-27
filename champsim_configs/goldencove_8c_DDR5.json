@@ -1,5 +1,5 @@
 {
-    "executable_name": "champsim_goldencove_8c_DDR5",
+    "executable_name": "champsim_goldencove_8c_ddr5",
     "block_size": 64,
     "page_size": 4096,
     "num_cores": 8,
@@ -23,30 +23,23 @@
         "ways": 8,
         "mshrs": 16,
         "latency": 4,
-        "prefetcher": "no"
+        "prefetcher": "next_line"
     },
     "L1D": {
         "sets": 64,
         "ways": 12,
         "mshrs": 16,
         "latency": 5,
-        "prefetcher": "next_line"
+        "prefetcher": "ip_stride"
     },
     "L2C": {
         "sets": 2048,
         "ways": 10,
         "mshrs": 48,
         "latency": 15,
-        "prefetcher": "ip_stride",
-        "replacement": "lru"
-    },
-    "LLC": {
-        "sets": 4096,
-        "ways": 16,
-        "mshrs": 192,
-        "latency": 67,
         "prefetcher": "next_line",
-        "replacement": "lru"
+        "replacement": "lru",
+        "lower_level": "DRAM"
     },
     "ITLB": {
         "sets": 32,
@@ -68,6 +61,6 @@
         "mshrs": 16
     },
     "physical_memory": {
-        "data_rate": 2400
+        "data_rate": 6400
     }
 }

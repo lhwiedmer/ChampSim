@@ -4,8 +4,8 @@ import os
 import csv
 
 # Configurações de diretório e saída
-DIRETORIO_RESULTADOS = "results/champsim/*.json"
-ARQUIVO_SAIDA_CSV = "classificacao_traces.csv"
+DIRETORIO_RESULTADOS = "results/classification_prefetch/champsim/*.json"
+ARQUIVO_SAIDA_CSV = "classificacao_traces_prefetch.csv"
 LIMITE_MPKI = 2.0  # Limiar padrão para classificar em Memory-Bound
 
 def somar_acessos(dicionario_cache, tipo_acesso):
