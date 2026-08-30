@@ -3,9 +3,13 @@ import glob
 import os
 import csv
 
-# Configurações de diretório e saída
-DIRETORIO_RESULTADOS = "results/classification_prefetch/champsim/*.json"
-ARQUIVO_SAIDA_CSV = "classificacao_traces_prefetch.csv"
+# Configurações de diretórios
+DIRETORIOS_RESULTADOS = [
+    "results/1c/ddr5/champsim",
+    "results/1c/ddr5_llc/champsim",
+    "results/1c/hbm4/champsim",
+    "results/1c/hbm4_llc/champsim"
+]
 LIMITE_MPKI = 2.0  # Limiar padrão para classificar em Memory-Bound
 
 def somar_acessos(dicionario_cache, tipo_acesso):
@@ -71,17 +75,25 @@ def extrair_metricas(caminho_arquivo):
             "MLP_L1D": round(mlp_l1d, 4),
         }
 
-def main():
-    arquivos = glob.glob(DIRETORIO_RESULTADOS)
+def processar_diretorio(diretorio):
+    padrao_busca = os.path.join(diretorio, "*.json")
+    arquivos = glob.glob(padrao_busca)
+    
     if not arquivos:
-        print(f"Nenhum arquivo JSON encontrado em: {DIRETORIO_RESULTADOS}")
+        print(f"\n[Aviso] Nenhum arquivo JSON encontrado em: {diretorio}")
         return
+
+    # Extrai o nome da configuração a partir do caminho (ex: "ddr5_llc")
+    # Usa-se split considerando a estrutura 'results/1c/{config}/champsim'
+    partes_caminho = os.path.normpath(diretorio).split(os.sep)
+    nome_config = partes_caminho[2] if len(partes_caminho) > 2 else "desconhecido"
+    arquivo_saida_csv = f"classificacao_traces_{nome_config}.csv"
 
     resultados = []
     compute_bound = []
     memory_bound = []
 
-    print(f"Processando arquivos em {DIRETORIO_RESULTADOS}...")
+    print(f"\nProcessando arquivos em {diretorio}...")
     for arq in arquivos:
         try:
             metricas = extrair_metricas(arq)
@@ -94,21 +106,25 @@ def main():
         except Exception as e:
             print(f"Erro ao processar {arq}: {e}")
 
-    # Ordenar resultados por LLC MPKI decrescente
-    resultados = sorted(resultados, key=lambda x: x["LLC_MPKI"], reverse=True)
+    # Ordenar resultados por IPC decrescente
+    resultados = sorted(resultados, key=lambda x: x["IPC"], reverse=False)
 
     # Escrever CSV
-    with open(ARQUIVO_SAIDA_CSV, 'w', newline='') as csvfile:
+    with open(arquivo_saida_csv, 'w', newline='') as csvfile:
         campos = ["Trace", "Classificacao", "IPC", "IA_Inst_per_Byte", "LLC_MPKI", "MLP_L1D"]
         writer = csv.DictWriter(csvfile, fieldnames=campos)
         writer.writeheader()
         writer.writerows(resultados)
 
-    print("\n--- RESUMO ---")
+    print(f"--- RESUMO: {nome_config.upper()} ---")
     print(f"Total de Traces: {len(resultados)}")
     print(f"Compute-Bound: {len(compute_bound)}")
     print(f"Memory-Bound:  {len(memory_bound)}")
-    print(f"Arquivo CSV gerado: {ARQUIVO_SAIDA_CSV}")
+    print(f"Arquivo CSV gerado: {arquivo_saida_csv}")
+
+def main():
+    for diretorio in DIRETORIOS_RESULTADOS:
+        processar_diretorio(diretorio)
 
 if __name__ == "__main__":
     main()
