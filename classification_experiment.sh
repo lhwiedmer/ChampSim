@@ -16,7 +16,7 @@ parallel --bar -j 40 \
   --ramulator-stats results/1c/{1}/ramulator/{2/.}.yaml \
   --json results/1c/{1}/champsim/{2/.}.json \
   {2}' \
-  ::: hbm4 hbm4_llc \
+  ::: hbm4 ddr5 \
   ::: traces/*
 
 #./bin/champsim_goldencove_8c_hbm4_llc --warmup-instructions 1000000 --simulation-instructions 1000000 \
