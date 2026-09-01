@@ -4,10 +4,10 @@ import numpy as np
 
 # 1. Configurações
 ARQUIVOS = {
-    "DDR5": "classificacao_benchmarks_agregado_ddr5.csv",
-    "Baseline (DDR5 + LLC)": "classificacao_benchmarks_agregado_ddr5_llc.csv",
-    "HBM4": "classificacao_benchmarks_agregado_hbm4.csv",
-    "HBM4 + LLC": "classificacao_benchmarks_agregado_hbm4_llc.csv"
+    "DDR5": "classificacao_traces_ddr5.csv",
+    "Baseline (DDR5 + LLC)": "classificacao_traces_ddr5_llc.csv",
+    "HBM4": "classificacao_traces_hbm4.csv",
+    "HBM4 + LLC": "classificacao_traces_hbm4_llc.csv"
 }
 
 NOME_BASELINE = "Baseline (DDR5 + LLC)"
@@ -24,7 +24,7 @@ def carregar_dados():
     for nome, arquivo in ARQUIVOS.items():
         try:
             df = pd.read_csv(arquivo)
-            df.set_index("Benchmark", inplace=True)
+            df.set_index("Trace", inplace=True)
             dfs[nome] = df["IPC"]
         except FileNotFoundError:
             print(f"[Erro] Arquivo não encontrado: {arquivo}")
@@ -117,7 +117,7 @@ def main():
     plt.tight_layout()
 
     # Salva com alta resolução
-    nome_saida = "grafico_speedup_academico_benchmarks.png"
+    nome_saida = "grafico_speedup_academico.png"
     plt.savefig(nome_saida, dpi=300, bbox_inches='tight')
     print(f"Gráfico gerado com sucesso: {nome_saida}")
     

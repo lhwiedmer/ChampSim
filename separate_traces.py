@@ -61,7 +61,10 @@ def extrair_metricas(caminho_arquivo):
         # 4. Cálculo de Paralelismo via Lei de Little (L = lambda * W)
         # 4.1 MLP no L1D (Paralelismo de Memória gerado pelo Core)
         l1d_misses = somar_misses_reais(l1d, ["LOAD", "WRITE", "TRANSLATION"])
-        l1d_miss_latency = l1d.get("miss latency", 0.0)
+        l1d_miss_latency = l1d.get("miss latency")
+        if l1d_miss_latency is None:
+            l1d_miss_latency = 0.0
+        
         mlp_l1d = (l1d_misses * l1d_miss_latency) / ciclos if ciclos > 0 else 0
         
         classificacao = "Memory-Bound" if llc_mpki > LIMITE_MPKI else "Compute-Bound"
