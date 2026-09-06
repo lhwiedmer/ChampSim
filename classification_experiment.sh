@@ -18,11 +18,3 @@ parallel --bar -j 40 \
   {2}' \
   ::: ddr5 \
   ::: traces/*
-
-#./bin/champsim_goldencove_8c_hbm4_llc --warmup-instructions 1000000 --simulation-instructions 1000000 \
-#  --ramulator-stats test_ramultor.yaml \
-#  --json test_champsim.json \
-#  traces/602.gcc_s-734B.champsimtrace.xz traces/602.gcc_s-1850B.champsimtrace.xz \
-#  traces/602.gcc_s-2226B.champsimtrace.xz traces/602.gcc_s-2375B.champsimtrace.xz \
-#  traces/602.gcc_s-2375B.champsimtrace.xz traces/602.gcc_s-2375B.champsimtrace.xz \
-#  traces/602.gcc_s-2375B.champsimtrace.xz traces/602.gcc_s-2375B.champsimtrace.xz

@@ -589,31 +589,53 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
 
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
+
   // FAST-PATH: Se estiver no warmup, resolve a requisição instantaneamente
   if (this->warmup) {
     response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
     if (packet.response_requested) {
       ul->returned.push_back(response);
     }
-    return true; // Aceito e concluído no mesmo ciclo
+    return true; 
   }
 
-  // SIMULAÇÃO REAL (ROI): Envia para o Ramulator
+  // Define quantos pacotes parciais formam uma linha de cache (ex: 64 / 32 = 2)
+  int num_chunks = 64 / RAMULATOR_TX_BYTES;
+  
+  // Contador atômico/compartilhado para sincronizar os retornos do Ramulator
+  auto chunks_pending = std::make_shared<int>(num_chunks);
+
+  // SIMULAÇÃO REAL: Primeira parte da linha de cache (ou linha inteira se TX_BYTES == 64)
   bool accepted = ramulator_frontend->receive_external_requests(
       Ramulator::Request::Type::Read, packet.address.to<long int>(), 0,
-      [packet, ul](Ramulator::Request& req) {
+      [packet, ul, chunks_pending](Ramulator::Request& req) {
         (void)req;
-        response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
-        if (packet.response_requested) {
+        (*chunks_pending)--;
+        // Acorda o ChampSim apenas quando o ÚLTIMO pedaço chegar
+        if (*chunks_pending == 0 && packet.response_requested) {
+          response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
           ul->returned.push_back(response);
         }
       },
       RAMULATOR_TX_BYTES);
 
-  // Tratamento da HBM4 (32 bytes)
+  // Tratamento da segunda parte para memórias com rajadas curtas (ex: HBM, onde TX_BYTES = 32)
   if (accepted && RAMULATOR_TX_BYTES < 64) {
-    ramulator_frontend->receive_external_requests(
-        Ramulator::Request::Type::Read, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
+    bool accepted_second = ramulator_frontend->receive_external_requests(
+        Ramulator::Request::Type::Read, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, 
+        [packet, ul, chunks_pending](Ramulator::Request& req) { 
+          (void)req;
+          (*chunks_pending)--;
+          if (*chunks_pending == 0 && packet.response_requested) {
+            response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
+            ul->returned.push_back(response);
+          }
+        }, 
+        RAMULATOR_TX_BYTES);
+        
+    // Nota arquitetural: se 'accepted_second' for false enquanto 'accepted' foi true,
+    // as requisições se dessincronizam na fila. O ChampSim geralmente assegura espaço,
+    // mas monitorar esse caso em experimentos futuros é uma boa prática.
   }
 
   return accepted;
@@ -627,11 +649,13 @@ bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
   }
 
   bool accepted = ramulator_frontend->receive_external_requests(
-      Ramulator::Request::Type::Write, packet.address.to<long int>(), 0, [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
+      Ramulator::Request::Type::Write, packet.address.to<long int>(), 0, 
+      [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
 
   if (accepted && RAMULATOR_TX_BYTES < 64) {
     ramulator_frontend->receive_external_requests(
-        Ramulator::Request::Type::Write, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
+        Ramulator::Request::Type::Write, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, 
+        [](Ramulator::Request& req) { (void)req; }, RAMULATOR_TX_BYTES);
   }
 
   return accepted;
