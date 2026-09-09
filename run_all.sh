@@ -35,4 +35,4 @@ gerar_comandos() {
 }
 
 # Despeja a fila unificada no GNU Parallel.
-gerar_comandos | parallel -j 48 --bar
+gerar_comandos | parallel -j 48 --bar --joblog execucao_champsim.log
