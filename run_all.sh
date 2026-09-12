@@ -34,5 +34,5 @@ gerar_comandos() {
   done
 }
 
-# Despeja a fila unificada no GNU Parallel.
-gerar_comandos | parallel -j 48 --bar --joblog execucao_champsim.log
+# Despeja a fila unificada no GNU Parallel com log e auto-resume
+gerar_comandos | parallel -j 48 --bar --joblog execucao_champsim.log --resume-failed
