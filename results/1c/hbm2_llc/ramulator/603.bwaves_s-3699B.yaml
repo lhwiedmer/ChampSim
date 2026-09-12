@@ -1,0 +1,113 @@
+frontend:
+  impl: External
+
+memory_system:
+  impl: GenericDRAM
+  total_num_read_requests: 287040
+  total_num_write_requests: 715
+  channel_mapper:
+    impl: CacheLineInterleave
+
+
+  controller:
+    -
+      impl: GenericDDR
+      id: Channel 0
+      cycles: 303096292
+      row_hits: 124561
+      row_misses: 15011
+      row_conflicts: 4536
+      read_row_hits: 124317
+      read_row_misses: 15009
+      read_row_conflicts: 4419
+      write_row_hits: 244
+      write_row_misses: 2
+      write_row_conflicts: 117
+      read_row_hits_core_0: 124317
+      read_row_misses_core_0: 15009
+      read_row_conflicts_core_0: 4419
+      num_read_reqs: 143745
+      num_write_reqs: 363
+      num_maintenance_reqs: 24247
+      num_read_reqs_served: 143745
+      num_write_reqs_served: 363
+      num_maintenance_reqs_served: 24247
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 5953883
+      read_queue_len: 5377788
+      write_queue_len: 352851
+      priority_queue_len: 223244
+      queue_len_avg: 0.0196435
+      read_queue_len_avg: 0.0177428
+      write_queue_len_avg: 0.00116415
+      priority_queue_len_avg: 0.000736545
+      read_latency: 14036302
+      avg_read_latency: 97.6472
+      read_throughput_MBps: 97.2831
+      write_throughput_MBps: 0.24567
+      total_throughput_MBps: 97.5288
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: GenericDDR
+      id: Channel 1
+      cycles: 303096292
+      row_hits: 124403
+      row_misses: 14809
+      row_conflicts: 4435
+      read_row_hits: 124159
+      read_row_misses: 14807
+      read_row_conflicts: 4329
+      write_row_hits: 244
+      write_row_misses: 2
+      write_row_conflicts: 106
+      read_row_hits_core_0: 124159
+      read_row_misses_core_0: 14807
+      read_row_conflicts_core_0: 4329
+      num_read_reqs: 143295
+      num_write_reqs: 352
+      num_maintenance_reqs: 24247
+      num_read_reqs_served: 143295
+      num_write_reqs_served: 352
+      num_maintenance_reqs_served: 24247
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 5849419
+      read_queue_len: 5267749
+      write_queue_len: 357811
+      priority_queue_len: 223859
+      queue_len_avg: 0.0192989
+      read_queue_len_avg: 0.0173798
+      write_queue_len_avg: 0.00118052
+      priority_queue_len_avg: 0.000738574
+      read_latency: 13888184
+      avg_read_latency: 96.9202
+      read_throughput_MBps: 96.9786
+      write_throughput_MBps: 0.238225
+      total_throughput_MBps: 97.2168
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+
