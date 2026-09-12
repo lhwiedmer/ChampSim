@@ -1,0 +1,1 @@
+cat download_traces.txt | parallel -j 4 wget -c -q --show-progress "https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/{}"
