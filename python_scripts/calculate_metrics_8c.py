@@ -7,6 +7,12 @@ import csv
 DIRETORIOS_RESULTADOS = [
     "results/8c/ddr5/champsim",
     "results/8c/ddr5_llc/champsim",
+    "results/8c/hbm1/champsim",
+    "results/8c/hbm1_llc/champsim",
+    "results/8c/hbm2/champsim",
+    "results/8c/hbm2_llc/champsim",
+    "results/8c/hbm3/champsim",
+    "results/8c/hbm3_llc/champsim",
     "results/8c/hbm4/champsim",
     "results/8c/hbm4_llc/champsim"
 ]

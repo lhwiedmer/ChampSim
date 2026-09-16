@@ -6,6 +6,12 @@ import numpy as np
 ARQUIVOS = {
     "DDR5": "classificacao_traces_ddr5_8core.csv",
     "Baseline (DDR5 + LLC)": "classificacao_traces_ddr5_llc_8core.csv",
+    "HBM1": "classificacao_traces_hbm1_8core.csv",
+    "HBM1 + LLC": "classificacao_traces_hbm1_llc_8core.csv",
+    "HBM2": "classificacao_traces_hbm2_8core.csv",
+    "HBM2 + LLC": "classificacao_traces_hbm2_llc_8core.csv",
+    "HBM3": "classificacao_traces_hbm3_8core.csv",
+    "HBM3 + LLC": "classificacao_traces_hbm3_llc_8core.csv",
     "HBM4": "classificacao_traces_hbm4_8core.csv",
     "HBM4 + LLC": "classificacao_traces_hbm4_llc_8core.csv"
 }
@@ -25,7 +31,7 @@ def carregar_dados():
         try:
             df = pd.read_csv(arquivo)
             df.set_index("Trace", inplace=True)
-            dfs[nome] = df["IPC"]
+            dfs[nome] = df["IPC_Agregado"]
         except FileNotFoundError:
             print(f"[Erro] Arquivo não encontrado: {arquivo}")
     return dfs
