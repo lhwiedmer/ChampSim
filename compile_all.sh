@@ -16,7 +16,11 @@ for mem in "${MEM_TYPES[@]}"; do
   
   # Converte o nome da memória para maiúsculo para mapear com o arquivo JSON (ex: ddr5 -> DDR5)
   mem_upper=$(echo "$mem" | tr '[:lower:]' '[:upper:]')
-  
+
+  # Força recompilação: objetos como dram_controller.o são compartilhados entre
+  # tipos de memória e o make não detecta mudança de CPPFLAGS (só timestamp de fonte)
+  make clean
+
   for core in "${CORES[@]}"; do
     for llc in "${LLC_VARIANTS[@]}"; do
       
