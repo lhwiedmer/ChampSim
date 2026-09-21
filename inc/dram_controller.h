@@ -24,6 +24,7 @@
 #include <deque>    // for deque
 #include <iterator> // for end
 #include <limits>
+#include <memory>
 #include <optional>
 #include <string>
 #include <ramulator/frontend/i_frontend.h>
@@ -199,6 +200,17 @@ class MEMORY_CONTROLLER : public champsim::operable
   void initiate_requests();
   bool add_rq(const request_type& packet, champsim::channel* ul);
   bool add_wq(const request_type& packet);
+
+  // Holds the second half of a split request whose first half was already accepted by Ramulator
+  // but whose second half was rejected, so it must be retried without resending the first half.
+  struct pending_chunk_request {
+    long int address;
+    request_type packet;
+    champsim::channel* ul;
+    std::shared_ptr<int> chunks_pending;
+  };
+  std::vector<pending_chunk_request> pending_second_chunks{};
+  void retry_pending_chunks();
 
   const DRAM_ADDRESS_MAPPING address_mapping;
 

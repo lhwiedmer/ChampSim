@@ -168,6 +168,7 @@ long MEMORY_CONTROLLER::operate()
 {
   long progress{0};
 
+  retry_pending_chunks();
   initiate_requests();
 
   ramulator_frontend->tick();
@@ -175,6 +176,36 @@ long MEMORY_CONTROLLER::operate()
 
   progress++;
   return progress;
+}
+
+// Retries second chunks whose first half was already committed to Ramulator, so their
+// completion callback is never silently dropped (which previously stalled the RQ/WQ entry forever).
+void MEMORY_CONTROLLER::retry_pending_chunks()
+{
+  auto it = std::begin(pending_second_chunks);
+  while (it != std::end(pending_second_chunks)) {
+    auto packet = it->packet;
+    auto* ul = it->ul;
+    auto chunks_pending = it->chunks_pending;
+
+    bool accepted = ramulator_frontend->receive_external_requests(
+        Ramulator::Request::Type::Read, it->address, 0,
+        [packet, ul, chunks_pending](Ramulator::Request& req) {
+          (void)req;
+          (*chunks_pending)--;
+          if (*chunks_pending == 0 && packet.response_requested) {
+            response_type response{packet.address, packet.v_address, packet.data, packet.pf_metadata, packet.instr_depend_on_me};
+            ul->returned.push_back(response);
+          }
+        },
+        RAMULATOR_TX_BYTES);
+
+    if (accepted) {
+      it = pending_second_chunks.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 long DRAM_CHANNEL::operate()
@@ -621,8 +652,9 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
 
   // Tratamento da segunda parte para memórias com rajadas curtas (ex: HBM, onde TX_BYTES = 32)
   if (accepted && RAMULATOR_TX_BYTES < 64) {
+    long int second_address = packet.address.to<long int>() + RAMULATOR_TX_BYTES;
     bool accepted_second = ramulator_frontend->receive_external_requests(
-        Ramulator::Request::Type::Read, packet.address.to<long int>() + RAMULATOR_TX_BYTES, 0, 
+        Ramulator::Request::Type::Read, second_address, 0, 
         [packet, ul, chunks_pending](Ramulator::Request& req) { 
           (void)req;
           (*chunks_pending)--;
@@ -632,10 +664,12 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
           }
         }, 
         RAMULATOR_TX_BYTES);
-        
-    // Nota arquitetural: se 'accepted_second' for false enquanto 'accepted' foi true,
-    // as requisições se dessincronizam na fila. O ChampSim geralmente assegura espaço,
-    // mas monitorar esse caso em experimentos futuros é uma boa prática.
+
+    // O primeiro chunk já foi comprometido no Ramulator; se o segundo for rejeitado, ele deve ser
+    // reenviado sozinho nos próximos ciclos, senão seu callback nunca dispara e a entrada trava para sempre.
+    if (!accepted_second) {
+      pending_second_chunks.push_back({second_address, packet, ul, chunks_pending});
+    }
   }
 
   return accepted;
