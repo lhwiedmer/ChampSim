@@ -3,50 +3,50 @@ frontend:
 
 memory_system:
   impl: GenericDRAM
-  total_num_read_requests: 1295164
-  total_num_write_requests: 38
+  total_num_read_requests: 2590328
+  total_num_write_requests: 76
   channel_mapper:
     impl: CacheLineInterleave
 
 
   controller:
     -
-      impl: GenericDDR
+      impl: HBM12
       id: Channel 0
-      cycles: 128978870
-      row_hits: 614993
-      row_misses: 46198
-      row_conflicts: 3043
-      read_row_hits: 614993
-      read_row_misses: 46198
-      read_row_conflicts: 3023
+      cycles: 118717106
+      row_hits: 268573
+      row_misses: 76308
+      row_conflicts: 3859
+      read_row_hits: 268573
+      read_row_misses: 76308
+      read_row_conflicts: 3846
       write_row_hits: 0
       write_row_misses: 0
-      write_row_conflicts: 20
-      read_row_hits_core_0: 614993
-      read_row_misses_core_0: 46198
-      read_row_conflicts_core_0: 3023
-      num_read_reqs: 664214
-      num_write_reqs: 20
-      num_maintenance_reqs: 10318
-      num_read_reqs_served: 664214
-      num_write_reqs_served: 20
-      num_maintenance_reqs_served: 10318
+      write_row_conflicts: 13
+      read_row_hits_core_0: 268573
+      read_row_misses_core_0: 76308
+      read_row_conflicts_core_0: 3846
+      num_read_reqs: 348727
+      num_write_reqs: 13
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 348727
+      num_write_reqs_served: 13
+      num_maintenance_reqs_served: 60880
       num_read_reqs_forwarded: 0
       num_write_reqs_coalesced: 0
-      queue_len: 9664216
-      read_queue_len: 9176823
-      write_queue_len: 2053
-      priority_queue_len: 485340
-      queue_len_avg: 0.0749287
-      read_queue_len_avg: 0.0711498
-      write_queue_len_avg: 1.59173e-05
-      priority_queue_len_avg: 0.00376294
-      read_latency: 47308553
-      avg_read_latency: 71.2249
-      read_throughput_MBps: 1056.37
-      write_throughput_MBps: 0.031808
-      total_throughput_MBps: 1056.4
+      queue_len: 2660290
+      read_queue_len: 2306519
+      write_queue_len: 91
+      priority_queue_len: 353680
+      queue_len_avg: 0.0224086
+      read_queue_len_avg: 0.0194287
+      write_queue_len_avg: 7.66528e-07
+      priority_queue_len_avg: 0.00297918
+      read_latency: 5737567
+      avg_read_latency: 16.4529
+      read_throughput_MBps: 46.9994
+      write_throughput_MBps: 0.00175206
+      total_throughput_MBps: 47.0011
       scheduler:
         impl: FRFCFS
 
@@ -61,42 +61,342 @@ memory_system:
 
 
     -
-      impl: GenericDDR
+      impl: HBM12
       id: Channel 1
-      cycles: 128978870
-      row_hits: 602705
-      row_misses: 27008
-      row_conflicts: 1255
-      read_row_hits: 602704
-      read_row_misses: 27008
-      read_row_conflicts: 1238
-      write_row_hits: 1
+      cycles: 118717106
+      row_hits: 268574
+      row_misses: 76311
+      row_conflicts: 3860
+      read_row_hits: 268574
+      read_row_misses: 76311
+      read_row_conflicts: 3848
+      write_row_hits: 0
       write_row_misses: 0
-      write_row_conflicts: 17
-      read_row_hits_core_0: 602704
-      read_row_misses_core_0: 27008
-      read_row_conflicts_core_0: 1238
-      num_read_reqs: 630950
-      num_write_reqs: 18
-      num_maintenance_reqs: 10318
-      num_read_reqs_served: 630950
-      num_write_reqs_served: 18
-      num_maintenance_reqs_served: 10318
+      write_row_conflicts: 12
+      read_row_hits_core_0: 268574
+      read_row_misses_core_0: 76311
+      read_row_conflicts_core_0: 3848
+      num_read_reqs: 348733
+      num_write_reqs: 12
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 348733
+      num_write_reqs_served: 12
+      num_maintenance_reqs_served: 60880
       num_read_reqs_forwarded: 0
       num_write_reqs_coalesced: 0
-      queue_len: 8107914
-      read_queue_len: 7670240
-      write_queue_len: 2016
-      priority_queue_len: 435658
-      queue_len_avg: 0.0628623
-      read_queue_len_avg: 0.059469
-      write_queue_len_avg: 1.56305e-05
-      priority_queue_len_avg: 0.00337775
-      read_latency: 43040862
-      avg_read_latency: 68.216
-      read_throughput_MBps: 1003.46
-      write_throughput_MBps: 0.0286272
-      total_throughput_MBps: 1003.49
+      queue_len: 2660228
+      read_queue_len: 2306460
+      write_queue_len: 84
+      priority_queue_len: 353684
+      queue_len_avg: 0.0224081
+      read_queue_len_avg: 0.0194282
+      write_queue_len_avg: 7.07564e-07
+      priority_queue_len_avg: 0.00297922
+      read_latency: 5737596
+      avg_read_latency: 16.4527
+      read_throughput_MBps: 47.0002
+      write_throughput_MBps: 0.00161729
+      total_throughput_MBps: 47.0018
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: HBM12
+      id: Channel 2
+      cycles: 118717106
+      row_hits: 255332
+      row_misses: 58100
+      row_conflicts: 2094
+      read_row_hits: 255331
+      read_row_misses: 58099
+      read_row_conflicts: 2086
+      write_row_hits: 1
+      write_row_misses: 1
+      write_row_conflicts: 8
+      read_row_hits_core_0: 255331
+      read_row_misses_core_0: 58099
+      read_row_conflicts_core_0: 2086
+      num_read_reqs: 315516
+      num_write_reqs: 10
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 315516
+      num_write_reqs_served: 10
+      num_maintenance_reqs_served: 60880
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 2349482
+      read_queue_len: 2034976
+      write_queue_len: 185
+      priority_queue_len: 314321
+      queue_len_avg: 0.0197906
+      read_queue_len_avg: 0.0171414
+      write_queue_len_avg: 1.55833e-06
+      priority_queue_len_avg: 0.00264765
+      read_latency: 5040584
+      avg_read_latency: 15.9757
+      read_throughput_MBps: 42.5234
+      write_throughput_MBps: 0.00134774
+      total_throughput_MBps: 42.5248
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: HBM12
+      id: Channel 3
+      cycles: 118717106
+      row_hits: 255321
+      row_misses: 58104
+      row_conflicts: 2109
+      read_row_hits: 255321
+      read_row_misses: 58103
+      read_row_conflicts: 2099
+      write_row_hits: 0
+      write_row_misses: 1
+      write_row_conflicts: 10
+      read_row_hits_core_0: 255321
+      read_row_misses_core_0: 58103
+      read_row_conflicts_core_0: 2099
+      num_read_reqs: 315523
+      num_write_reqs: 11
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 315523
+      num_write_reqs_served: 11
+      num_maintenance_reqs_served: 60880
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 2349384
+      read_queue_len: 2034865
+      write_queue_len: 198
+      priority_queue_len: 314321
+      queue_len_avg: 0.0197898
+      read_queue_len_avg: 0.0171405
+      write_queue_len_avg: 1.66783e-06
+      priority_queue_len_avg: 0.00264765
+      read_latency: 5040665
+      avg_read_latency: 15.9756
+      read_throughput_MBps: 42.5244
+      write_throughput_MBps: 0.00148252
+      total_throughput_MBps: 42.5258
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: HBM12
+      id: Channel 4
+      cycles: 118717106
+      row_hits: 255607
+      row_misses: 57862
+      row_conflicts: 2022
+      read_row_hits: 255606
+      read_row_misses: 57862
+      read_row_conflicts: 2014
+      write_row_hits: 1
+      write_row_misses: 0
+      write_row_conflicts: 8
+      read_row_hits_core_0: 255606
+      read_row_misses_core_0: 57862
+      read_row_conflicts_core_0: 2014
+      num_read_reqs: 315482
+      num_write_reqs: 9
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 315482
+      num_write_reqs_served: 9
+      num_maintenance_reqs_served: 60880
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 2376240
+      read_queue_len: 2062039
+      write_queue_len: 57
+      priority_queue_len: 314144
+      queue_len_avg: 0.020016
+      read_queue_len_avg: 0.0173694
+      write_queue_len_avg: 4.80133e-07
+      priority_queue_len_avg: 0.00264616
+      read_latency: 5064903
+      avg_read_latency: 16.0545
+      read_throughput_MBps: 42.5188
+      write_throughput_MBps: 0.00121297
+      total_throughput_MBps: 42.52
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: HBM12
+      id: Channel 5
+      cycles: 118717106
+      row_hits: 255588
+      row_misses: 57864
+      row_conflicts: 2037
+      read_row_hits: 255588
+      read_row_misses: 57864
+      read_row_conflicts: 2029
+      write_row_hits: 0
+      write_row_misses: 0
+      write_row_conflicts: 8
+      read_row_hits_core_0: 255588
+      read_row_misses_core_0: 57864
+      read_row_conflicts_core_0: 2029
+      num_read_reqs: 315481
+      num_write_reqs: 8
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 315481
+      num_write_reqs_served: 8
+      num_maintenance_reqs_served: 60880
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 2376133
+      read_queue_len: 2061933
+      write_queue_len: 56
+      priority_queue_len: 314144
+      queue_len_avg: 0.0200151
+      read_queue_len_avg: 0.0173685
+      write_queue_len_avg: 4.7171e-07
+      priority_queue_len_avg: 0.00264616
+      read_latency: 5064925
+      avg_read_latency: 16.0546
+      read_throughput_MBps: 42.5187
+      write_throughput_MBps: 0.00107819
+      total_throughput_MBps: 42.5198
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: HBM12
+      id: Channel 6
+      cycles: 118717106
+      row_hits: 255705
+      row_misses: 57743
+      row_conflicts: 1997
+      read_row_hits: 255704
+      read_row_misses: 57743
+      read_row_conflicts: 1992
+      write_row_hits: 1
+      write_row_misses: 0
+      write_row_conflicts: 5
+      read_row_hits_core_0: 255704
+      read_row_misses_core_0: 57743
+      read_row_conflicts_core_0: 1992
+      num_read_reqs: 315439
+      num_write_reqs: 6
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 315439
+      num_write_reqs_served: 6
+      num_maintenance_reqs_served: 60880
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 2399489
+      read_queue_len: 2085724
+      write_queue_len: 36
+      priority_queue_len: 313729
+      queue_len_avg: 0.0202118
+      read_queue_len_avg: 0.0175689
+      write_queue_len_avg: 3.03242e-07
+      priority_queue_len_avg: 0.00264266
+      read_latency: 5087116
+      avg_read_latency: 16.1271
+      read_throughput_MBps: 42.513
+      write_throughput_MBps: 0.000808645
+      total_throughput_MBps: 42.5138
+      scheduler:
+        impl: FRFCFS
+
+      refresh_manager:
+        impl: AllBank
+
+      row_policy:
+        impl: Open
+
+      addr_mapper:
+        impl: RoBaRaCoCh
+
+
+    -
+      impl: HBM12
+      id: Channel 7
+      cycles: 118717106
+      row_hits: 255686
+      row_misses: 57748
+      row_conflicts: 2000
+      read_row_hits: 255686
+      read_row_misses: 57748
+      read_row_conflicts: 1993
+      write_row_hits: 0
+      write_row_misses: 0
+      write_row_conflicts: 7
+      read_row_hits_core_0: 255686
+      read_row_misses_core_0: 57748
+      read_row_conflicts_core_0: 1993
+      num_read_reqs: 315427
+      num_write_reqs: 7
+      num_maintenance_reqs: 60880
+      num_read_reqs_served: 315427
+      num_write_reqs_served: 7
+      num_maintenance_reqs_served: 60880
+      num_read_reqs_forwarded: 0
+      num_write_reqs_coalesced: 0
+      queue_len: 2399378
+      read_queue_len: 2085600
+      write_queue_len: 49
+      priority_queue_len: 313729
+      queue_len_avg: 0.0202109
+      read_queue_len_avg: 0.0175678
+      write_queue_len_avg: 4.12746e-07
+      priority_queue_len_avg: 0.00264266
+      read_latency: 5086944
+      avg_read_latency: 16.1272
+      read_throughput_MBps: 42.5114
+      write_throughput_MBps: 0.000943419
+      total_throughput_MBps: 42.5124
       scheduler:
         impl: FRFCFS
 
