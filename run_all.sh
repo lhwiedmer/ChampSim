@@ -76,7 +76,8 @@ T_RANDOM="traces/657.xz_s-3167B.champsimtrace.xz traces/605.mcf_s-1152B.champsim
 # Log e diretório de resultados isolados por modo para permitir execuções concorrentes
 LOG="execucao_champsim_${MODE}.log"
 DONE_CMDS="/tmp/champsim_done_cmds.$$"
-trap 'rm -f "$DONE_CMDS"' EXIT
+NEW_LOG="/tmp/champsim_new_log.$$"
+trap 'rm -f "$DONE_CMDS" "$NEW_LOG"' EXIT
 
 for config in "${CONFIGS[@]}"; do
   [[ "$MODE" == "1c" || "$MODE" == "all" ]] && mkdir -p "results/1c/${config}/ramulator" "results/1c/${config}/champsim"
@@ -120,4 +121,14 @@ fi
 echo "Modo: $MODE | Comandos já concluídos com sucesso (Exitval=0): $(wc -l < "$DONE_CMDS")"
 
 # Filtra por comparação exata de texto, não por posição/Seq
-gerar_comandos | grep -Fxv -f "$DONE_CMDS" | parallel -j "$JOBS" --bar --joblog "$LOG"
+# Grava em log separado: --joblog sobrescreve o arquivo, então o histórico precisa ser mesclado depois
+gerar_comandos | grep -Fxv -f "$DONE_CMDS" | parallel -j "$JOBS" --bar --joblog "$NEW_LOG"
+
+# Acrescenta os resultados desta execução ao histórico acumulado, sem perder execuções passadas
+if [[ -s "$NEW_LOG" ]]; then
+  if [[ -s "$LOG" ]]; then
+    { head -n1 "$NEW_LOG"; tail -n +2 "$LOG"; tail -n +2 "$NEW_LOG"; } > "${LOG}.tmp" && mv "${LOG}.tmp" "$LOG"
+  else
+    mv "$NEW_LOG" "$LOG"
+  fi
+fi
