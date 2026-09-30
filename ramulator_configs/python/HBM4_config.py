@@ -2,7 +2,7 @@ import ramulator
 
 frontend = ramulator.frontend.External(clock_ratio=1)
 
-dram = ramulator.dram.HBM4(org_preset="HBM4_32Gb_4Hi", timing_preset="HBM4_8000Mbps")
+dram = ramulator.dram.HBM4(org_preset="HBM4_32Gb_16Hi", timing_preset="HBM4_8000Mbps")
 ctrl = ramulator.controller.HBM34(
     dram=dram,
     scheduler=ramulator.scheduler.FRFCFS(),
@@ -13,7 +13,7 @@ ctrl = ramulator.controller.HBM34(
 
 mem = ramulator.memory_system.GenericDRAM(
     clock_ratio=1,
-    controllers=[ctrl] * 16,
+    controllers=[ctrl] * 32,
     channel_mapper=ramulator.channel_mapper.CacheLineInterleave(),
 )
 

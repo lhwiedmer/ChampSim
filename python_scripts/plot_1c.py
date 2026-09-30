@@ -1,38 +1,93 @@
+import argparse
+from pathlib import Path
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# 1. Configurações
-ARQUIVOS = {
-    "DDR5": "classificacao_benchmarks_agregado_ddr5.csv",
-    "Baseline (DDR5 + LLC)": "classificacao_benchmarks_agregado_ddr5_llc.csv",
-    "HBM4": "classificacao_benchmarks_agregado_hbm4.csv",
-    "HBM4 + LLC": "classificacao_benchmarks_agregado_hbm4_llc.csv"
-}
-
-NOME_BASELINE = "Baseline (DDR5 + LLC)"
+CONFIGURACOES_PADRAO = [
+    "DDR5", "DDR5+LLC",
+    "HBM1", "HBM1+LLC",
+    "HBM2", "HBM2+LLC",
+    "HBM3", "HBM3+LLC",
+    "HBM4", "HBM4+LLC",
+]
 
 # Cores mantidas para diferenciar as múltiplas configurações no mesmo gráfico
 CORES = {
     "DDR5": "#404040",       # Cinza escuro
-    "HBM4": "#ff7f0e",       # Laranja
-    "HBM4 + LLC": "#2ca02c"  # Verde
+    "DDR5 + LLC": "#808080",
+    "HBM1": "#ff7f0e",       # Laranja
+    "HBM1 + LLC": "#2ca02c",  # Verde
+    "HBM2": "#1f77b4",       # Azul
+    "HBM2 + LLC": "#d62728",  # Vermelho
+    "HBM3": "#9467bd",       # Roxo
+    "HBM3 + LLC": "#8c564b",  # Marrom
+    "HBM4": "#e377c2",       # Rosa
+    "HBM4 + LLC": "#7f7f7f",  # Cinza
 }
 
-def carregar_dados():
+def normalizar_configuracao(configuracao):
+    config = configuracao.strip().lower().replace("+", "_").replace(" ", "_")
+    base = {f"hbm{i}" for i in range(1, 5)} | {"ddr5"}
+    if config not in base and not (config.endswith("_llc") and config[:-4] in base):
+        raise ValueError(f"Configuração inválida: {configuracao}")
+    return config
+
+def nome_configuracao(configuracao):
+    return configuracao.replace("_", " + ").upper()
+
+def carregar_dados(origem_dados, configuracoes):
     dfs = {}
-    for nome, arquivo in ARQUIVOS.items():
+    for configuracao in configuracoes:
+        nome = nome_configuracao(configuracao)
+        arquivo = f"classificacao_benchmarks_agregado_{configuracao}.csv"
+        caminho_arquivo = origem_dados / arquivo
         try:
-            df = pd.read_csv(arquivo)
+            df = pd.read_csv(caminho_arquivo)
             df.set_index("Benchmark", inplace=True)
             dfs[nome] = df["IPC"]
         except FileNotFoundError:
-            print(f"[Erro] Arquivo não encontrado: {arquivo}")
+            print(f"[Erro] Arquivo não encontrado: {caminho_arquivo}")
     return dfs
 
 def main():
-    dfs = carregar_dados()
-    if not dfs or NOME_BASELINE not in dfs:
+    parser = argparse.ArgumentParser(description="Gera o gráfico de speedup dos benchmarks de 1 núcleo.")
+    parser.add_argument(
+        "--origem-dados",
+        type=Path,
+        default=Path("."),
+        help="Diretório que contém os arquivos CSV de entrada (padrão: diretório atual).",
+    )
+    parser.add_argument(
+        "--saida",
+        type=Path,
+        default=Path("grafico_speedup_academico_benchmarks.png"),
+        help="Nome ou caminho do arquivo PNG de destino.",
+    )
+    parser.add_argument(
+        "--configuracoes",
+        nargs="+",
+        default=CONFIGURACOES_PADRAO,
+        help="Configurações a comparar, como DDR5 DDR5+LLC HBM1 HBM1+LLC.",
+    )
+    parser.add_argument(
+        "--baseline",
+        default="DDR5+LLC",
+        help="Configuração usada como baseline (padrão: DDR5+LLC).",
+    )
+    args = parser.parse_args()
+
+    try:
+        configuracoes = [normalizar_configuracao(config) for config in args.configuracoes]
+        baseline = normalizar_configuracao(args.baseline)
+    except ValueError as erro:
+        parser.error(str(erro))
+
+    nomes = {config: nome_configuracao(config) for config in configuracoes}
+    nome_baseline = nome_configuracao(baseline)
+    dfs = carregar_dados(args.origem_dados, configuracoes)
+    if not dfs or nome_baseline not in dfs:
         print("Dados insuficientes para gerar o gráfico.")
         return
 
@@ -41,10 +96,11 @@ def main():
     # 2. Calcular o Speedup (Formato 1.x)
     df_speedup = pd.DataFrame(index=df_ipc.index)
     
-    for config in ARQUIVOS.keys():
-        if config != NOME_BASELINE:
+    for config in configuracoes:
+        nome = nomes[config]
+        if nome != nome_baseline and nome in df_ipc:
             # Divisão direta: IPC / Baseline IPC (ex: resulta em 1.25, 0.95, 1.00)
-            df_speedup[config] = df_ipc[config] / df_ipc[NOME_BASELINE]
+            df_speedup[nome] = df_ipc[nome] / df_ipc[nome_baseline]
 
     # Ordenar o eixo X pela média de speedup (decrescente, similar à imagem)
     df_speedup["Media"] = df_speedup.mean(axis=1)
@@ -61,7 +117,7 @@ def main():
         kind='bar', 
         ax=ax, 
         width=0.8, 
-        color=[CORES[c] for c in df_speedup.columns],
+        color=[CORES.get(c, "#333333") for c in df_speedup.columns],
         edgecolor='white',
         linewidth=1
     )
@@ -117,9 +173,9 @@ def main():
     plt.tight_layout()
 
     # Salva com alta resolução
-    nome_saida = "grafico_speedup_academico_benchmarks.png"
-    plt.savefig(nome_saida, dpi=300, bbox_inches='tight')
-    print(f"Gráfico gerado com sucesso: {nome_saida}")
+    args.saida.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(args.saida, dpi=300, bbox_inches='tight')
+    print(f"Gráfico gerado com sucesso: {args.saida}")
     
     plt.show()
 
