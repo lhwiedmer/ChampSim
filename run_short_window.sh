@@ -11,7 +11,7 @@ usage() {
 }
 
 MODE="all"
-JOBS=30
+JOBS=25
 WARMUP=200000000
 SIM=50000000
 
