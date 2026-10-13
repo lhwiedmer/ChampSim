@@ -16,6 +16,7 @@ DIRETORIOS_RESULTADOS = [
     "results/8c/hbm4/champsim",
     "results/8c/hbm4_llc/champsim"
 ]
+DIRETORIO_SAIDA = os.path.join("tables", "8c")
 LIMITE_MPKI = 2.0  # Limiar padrão para classificar em Memory-Bound
 
 def somar_acessos(dicionario_cache, tipo_acesso):
@@ -34,7 +35,32 @@ def somar_misses_reais(dicionario_cache, tipos_acesso):
             total_misses += sum(dicionario_cache[req].get("miss", [0]))
     return total_misses
 
-def extrair_metricas(caminho_arquivo):
+def calcular_weighted_speedup(cores, traces, ipc_single_core):
+    if ipc_single_core is None or len(cores) != len(traces):
+        return None
+
+    weighted_speedup = 0
+    for core, trace in zip(cores, traces):
+        ipc_isolado = ipc_single_core.get(trace)
+        ciclos = core["cycles"]
+        if ipc_isolado is None or ipc_isolado <= 0 or ciclos <= 0:
+            return None
+
+        ipc_multicore = core["instructions"] / ciclos
+        weighted_speedup += ipc_multicore / ipc_isolado
+
+    return weighted_speedup
+
+def carregar_ipcs_single_core(nome_config):
+    caminho_tabela = os.path.join("tables", "1c_trace", f"{nome_config}.csv")
+    if not os.path.exists(caminho_tabela):
+        return None
+
+    with open(caminho_tabela, "r", newline="") as csvfile:
+        leitor = csv.DictReader(csvfile)
+        return {linha["Trace"]: float(linha["IPC"]) for linha in leitor}
+
+def extrair_metricas(caminho_arquivo, ipc_single_core=None):
     with open(caminho_arquivo, 'r') as f:
         dados = json.load(f)
         
@@ -42,6 +68,7 @@ def extrair_metricas(caminho_arquivo):
             dados = dados[0]
             
         sim = dados["sim"]
+        traces = dados.get("traces", [])
         
         # CORREÇÃO AQUI: Pega o nome do arquivo (ex: "llc-compatible")
         nome_trace = os.path.basename(caminho_arquivo).replace(".json", "")
@@ -58,6 +85,7 @@ def extrair_metricas(caminho_arquivo):
                 max_ciclos = core["cycles"]
                 
         ipc_agregado = total_instrucoes / max_ciclos if max_ciclos > 0 else 0
+        weighted_speedup = calcular_weighted_speedup(sim["cores"], traces, ipc_single_core)
         
         # 2. Intensidade Aritmética (CARM) Agregada
         total_acessos_l1d = 0
@@ -92,6 +120,7 @@ def extrair_metricas(caminho_arquivo):
             "Trace": nome_trace, # Agora aparecerá llc-compatible, mix, etc.
             "Classificacao": classificacao,
             "IPC_Agregado": round(ipc_agregado, 4),
+            "Weighted_Speedup": round(weighted_speedup, 4) if weighted_speedup is not None else None,
             "IA_Inst_per_Byte": round(ia_agregada, 4),
             "LLC_MPKI": round(llc_mpki, 4),
             "MLP_L1D_Total": round(mlp_l1d_total, 4),
@@ -107,14 +136,20 @@ def processar_diretorio(diretorio):
 
     partes_caminho = os.path.normpath(diretorio).split(os.sep)
     nome_config = partes_caminho[2] if len(partes_caminho) > 2 else "desconhecido"
-    arquivo_saida_csv = f"classificacao_traces_{nome_config}_8core.csv"
+    os.makedirs(DIRETORIO_SAIDA, exist_ok=True)
+    arquivo_saida_csv = os.path.join(DIRETORIO_SAIDA, f"{nome_config}.csv")
+    ipc_single_core = carregar_ipcs_single_core(nome_config)
+    if ipc_single_core is None:
+        print(f"[Aviso] Tabela single-core não encontrada para {nome_config}; Weighted Speedup ficará vazio.")
 
     resultados = []
     
     print(f"\nProcessando arquivos em {diretorio}...")
     for arq in arquivos:
         try:
-            metricas = extrair_metricas(arq)
+            metricas = extrair_metricas(arq, ipc_single_core)
+            if metricas["Weighted_Speedup"] is None and ipc_single_core is not None:
+                print(f"[Aviso] Não foi possível calcular Weighted Speedup para {arq}: trace sem IPC single-core válido.")
             resultados.append(metricas)
         except Exception as e:
             print(f"Erro ao processar {arq}: {e}")
@@ -124,7 +159,7 @@ def processar_diretorio(diretorio):
 
     # Escrever CSV
     with open(arquivo_saida_csv, 'w', newline='') as csvfile:
-        campos = ["Trace", "Classificacao", "IPC_Agregado", "IA_Inst_per_Byte", "LLC_MPKI", "MLP_L1D_Total"]
+        campos = ["Trace", "Classificacao", "IPC_Agregado", "Weighted_Speedup", "IA_Inst_per_Byte", "LLC_MPKI", "MLP_L1D_Total"]
         writer = csv.DictWriter(csvfile, fieldnames=campos)
         writer.writeheader()
         writer.writerows(resultados)

@@ -7,9 +7,16 @@ import csv
 DIRETORIOS_RESULTADOS = [
     "results/1c/ddr5/champsim",
     "results/1c/ddr5_llc/champsim",
+    "results/1c/hbm1/champsim",
+    "results/1c/hbm1_llc/champsim",
+    "results/1c/hbm2/champsim",
+    "results/1c/hbm2_llc/champsim",
+    "results/1c/hbm3/champsim",
+    "results/1c/hbm3_llc/champsim",
     "results/1c/hbm4/champsim",
     "results/1c/hbm4_llc/champsim"
 ]
+DIRETORIO_SAIDA = os.path.join("tables", "1c_trace")
 LIMITE_MPKI = 2.0  # Limiar padrão para classificar em Memory-Bound
 
 def somar_acessos(dicionario_cache, tipo_acesso):
@@ -90,7 +97,8 @@ def processar_diretorio(diretorio):
     # Usa-se split considerando a estrutura 'results/1c/{config}/champsim'
     partes_caminho = os.path.normpath(diretorio).split(os.sep)
     nome_config = partes_caminho[2] if len(partes_caminho) > 2 else "desconhecido"
-    arquivo_saida_csv = f"classificacao_traces_{nome_config}.csv"
+    os.makedirs(DIRETORIO_SAIDA, exist_ok=True)
+    arquivo_saida_csv = os.path.join(DIRETORIO_SAIDA, f"{nome_config}.csv")
 
     resultados = []
     compute_bound = []

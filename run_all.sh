@@ -51,6 +51,8 @@ usage() {
 
 MODE="all"
 JOBS=48
+# Um pouco abaixo do menor ROI observado (1.799.999.503) nos JSONs 1c/ddr5.
+SIMULATION_INSTRUCTIONS=1799000000
 
 while getopts ":m:j:h" opt; do
   case "$opt" in
@@ -86,10 +88,10 @@ done
 
 gerar_comandos_8c() {
   for config in "${CONFIGS[@]}"; do
-    echo "./bin/champsim_goldencove_8c_${config} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/llc-compatible.yaml --json results/8c/${config}/champsim/llc-compatible.json ${T_COMPATIBLE}"
-    echo "./bin/champsim_goldencove_8c_${config} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/llc-incompatible.yaml --json results/8c/${config}/champsim/llc-incompatible.json ${T_INCOMPATIBLE}"
-    echo "./bin/champsim_goldencove_8c_${config} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/mix.yaml --json results/8c/${config}/champsim/mix.json ${T_MIX}"
-    echo "./bin/champsim_goldencove_8c_${config} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/random.yaml --json results/8c/${config}/champsim/random.json ${T_RANDOM}"
+    echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/llc-compatible.yaml --json results/8c/${config}/champsim/llc-compatible.json ${T_COMPATIBLE}"
+    echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/llc-incompatible.yaml --json results/8c/${config}/champsim/llc-incompatible.json ${T_INCOMPATIBLE}"
+    echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/mix.yaml --json results/8c/${config}/champsim/mix.json ${T_MIX}"
+    echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/random.yaml --json results/8c/${config}/champsim/random.json ${T_RANDOM}"
   done
 }
 
@@ -97,7 +99,7 @@ gerar_comandos_1c() {
   for config in "${CONFIGS[@]}"; do
     for trace_path in traces/*.champsimtrace.xz; do
       trace_name=$(basename "$trace_path" | sed 's/\.champsimtrace\.xz//')
-      echo "./bin/champsim_goldencove_1c_${config} --warmup-instructions 200000000 --ramulator-stats results/1c/${config}/ramulator/${trace_name}.yaml --json results/1c/${config}/champsim/${trace_name}.json ${trace_path}"
+      echo "./bin/champsim_goldencove_1c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/1c/${config}/ramulator/${trace_name}.yaml --json results/1c/${config}/champsim/${trace_name}.json ${trace_path}"
     done
   done
 }

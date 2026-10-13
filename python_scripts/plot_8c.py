@@ -29,7 +29,7 @@ def carregar_dados(origem_dados, configuracoes):
     dfs = {}
     for configuracao in configuracoes:
         nome = nome_configuracao(configuracao)
-        arquivo = f"classificacao_traces_{configuracao}_8core.csv"
+        arquivo = f"{configuracao}.csv"
         caminho_arquivo = origem_dados / arquivo
         try:
             df = pd.read_csv(caminho_arquivo)
@@ -44,8 +44,8 @@ def main():
     parser.add_argument(
         "--origem-dados",
         type=Path,
-        default=Path("."),
-        help="Diretório que contém os arquivos CSV de entrada (padrão: diretório atual).",
+        default=Path("tables/8c"),
+        help="Diretório que contém os arquivos CSV de entrada (padrão: tables/8c).",
     )
     parser.add_argument(
         "--saida",

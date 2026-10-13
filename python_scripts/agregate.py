@@ -17,6 +17,7 @@ DIRETORIOS_RESULTADOS = [
     "results/1c/hbm4/champsim",
     "results/1c/hbm4_llc/champsim"
 ]
+DIRETORIO_SAIDA = os.path.join("tables", "1c_agregate")
 DIRETORIO_PESOS = "traces/weights-and-simpoints-speccpu"
 LIMITE_MPKI = 2.0  # Limiar padrão para classificar em Memory-Bound
 
@@ -181,7 +182,8 @@ def processar_diretorio(diretorio, pesos_db):
 
     partes_caminho = os.path.normpath(diretorio).split(os.sep)
     nome_config = partes_caminho[2] if len(partes_caminho) > 2 else "desconhecido"
-    arquivo_saida_csv = f"classificacao_benchmarks_agregado_{nome_config}.csv"
+    os.makedirs(DIRETORIO_SAIDA, exist_ok=True)
+    arquivo_saida_csv = os.path.join(DIRETORIO_SAIDA, f"{nome_config}.csv")
 
     print(f"\nProcessando {len(arquivos)} arquivos de trace em {diretorio}...")
     resultados_individuais = []
