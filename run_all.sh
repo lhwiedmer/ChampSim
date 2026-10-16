@@ -43,8 +43,9 @@
 # run_all.sh
 
 usage() {
-  echo "Uso: $0 [-m 1c|8c|all] [-j jobs]" >&2
+  echo "Uso: $0 [-m 1c|8c|all|hbm3llc-hbm4] [-j jobs]" >&2
   echo "  -m  Conjunto de experimentos a executar (padrão: all)" >&2
+  echo "     hbm3llc-hbm4: somente multicore; random do HBM3_LLC e todos HBM4/HBM4_LLC" >&2
   echo "  -j  Número de jobs paralelos do GNU Parallel (padrão: 48)" >&2
   exit 1
 }
@@ -64,7 +65,7 @@ while getopts ":m:j:h" opt; do
 done
 
 case "$MODE" in
-  1c|8c|all) ;;
+  1c|8c|all|hbm3llc-hbm4) ;;
   *) echo "Modo inválido: $MODE" >&2; usage ;;
 esac
 
@@ -81,26 +82,55 @@ DONE_CMDS="/tmp/champsim_done_cmds.$$"
 NEW_LOG="/tmp/champsim_new_log.$$"
 trap 'rm -f "$DONE_CMDS" "$NEW_LOG"' EXIT
 
-for config in "${CONFIGS[@]}"; do
-  [[ "$MODE" == "1c" || "$MODE" == "all" ]] && mkdir -p "results/1c/${config}/ramulator" "results/1c/${config}/champsim"
-  [[ "$MODE" == "8c" || "$MODE" == "all" ]] && mkdir -p "results/8c/${config}/ramulator" "results/8c/${config}/champsim"
-done
-
-gerar_comandos_8c() {
+if [[ "$MODE" == "hbm3llc-hbm4" ]]; then
+  for config in hbm3_llc hbm4 hbm4_llc; do
+    mkdir -p "results/8c/${config}/ramulator" "results/8c/${config}/champsim"
+  done
+else
   for config in "${CONFIGS[@]}"; do
+    [[ "$MODE" == "1c" || "$MODE" == "all" ]] && mkdir -p "results/1c/${config}/ramulator" "results/1c/${config}/champsim"
+    [[ "$MODE" == "8c" || "$MODE" == "all" ]] && mkdir -p "results/8c/${config}/ramulator" "results/8c/${config}/champsim"
+  done
+fi
+
+gerar_comandos_8c_config() {
+  local config="$1"
+  local workloads="$2"
+
+  if [[ "$workloads" == "all" ]]; then
     echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/llc-compatible.yaml --json results/8c/${config}/champsim/llc-compatible.json ${T_COMPATIBLE}"
     echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/llc-incompatible.yaml --json results/8c/${config}/champsim/llc-incompatible.json ${T_INCOMPATIBLE}"
     echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/mix.yaml --json results/8c/${config}/champsim/mix.json ${T_MIX}"
+  fi
+  if [[ "$workloads" == "all" || "$workloads" == "random" ]]; then
     echo "./bin/champsim_goldencove_8c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/8c/${config}/ramulator/random.yaml --json results/8c/${config}/champsim/random.json ${T_RANDOM}"
+  fi
+}
+
+gerar_comandos_8c() {
+  for config in "${CONFIGS[@]}"; do
+    gerar_comandos_8c_config "$config" all
+  done
+}
+
+gerar_comandos_1c_config() {
+  local config="$1"
+  for trace_path in traces/*.champsimtrace.xz; do
+    trace_name=$(basename "$trace_path" | sed 's/\.champsimtrace\.xz//')
+    echo "./bin/champsim_goldencove_1c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/1c/${config}/ramulator/${trace_name}.yaml --json results/1c/${config}/champsim/${trace_name}.json ${trace_path}"
   done
 }
 
 gerar_comandos_1c() {
   for config in "${CONFIGS[@]}"; do
-    for trace_path in traces/*.champsimtrace.xz; do
-      trace_name=$(basename "$trace_path" | sed 's/\.champsimtrace\.xz//')
-      echo "./bin/champsim_goldencove_1c_${config} -i ${SIMULATION_INSTRUCTIONS} --warmup-instructions 200000000 --ramulator-stats results/1c/${config}/ramulator/${trace_name}.yaml --json results/1c/${config}/champsim/${trace_name}.json ${trace_path}"
-    done
+    gerar_comandos_1c_config "$config"
+  done
+}
+
+gerar_comandos_hbm3llc_hbm4() {
+  gerar_comandos_8c_config hbm3_llc random
+  for config in hbm4 hbm4_llc; do
+    gerar_comandos_8c_config "$config" all
   done
 }
 
@@ -109,6 +139,7 @@ gerar_comandos() {
     1c) gerar_comandos_1c ;;
     8c) gerar_comandos_8c ;;
     all) gerar_comandos_8c; gerar_comandos_1c ;;
+    hbm3llc-hbm4) gerar_comandos_hbm3llc_hbm4 ;;
   esac
 }
 
