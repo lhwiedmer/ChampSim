@@ -34,7 +34,8 @@ def carregar_dados(origem_dados, configuracoes):
         try:
             df = pd.read_csv(caminho_arquivo)
             df.set_index("Trace", inplace=True)
-            dfs[nome] = df["IPC_Agregado"]
+            df = df.loc[~df.index.astype(str).str.lower().isin(["média", "media", "resumo"])]
+            dfs[nome] = df["Weighted_Speedup"]
         except FileNotFoundError:
             print(f"[Erro] Arquivo não encontrado: {caminho_arquivo}")
     return dfs
@@ -54,12 +55,22 @@ def main():
         help="Nome ou caminho do arquivo PNG de destino.",
     )
     parser.add_argument("--configuracoes", nargs="+", default=CONFIGURACOES_PADRAO, help="Configurações a comparar.")
-    parser.add_argument("--baseline", default="DDR5+LLC", help="Configuração usada como baseline.")
+    parser.add_argument(
+        "--baseline",
+        default="DDR5+LLC",
+        help="Configuração de referência a incluir como barra (padrão: DDR5+LLC).",
+    )
     args = parser.parse_args()
 
     try:
         configuracoes = [normalizar_configuracao(config) for config in args.configuracoes]
         baseline = normalizar_configuracao(args.baseline)
+        configuracoes = list(dict.fromkeys(configuracoes))
+        configuracoes = ["ddr5_llc"] + [
+            config for config in configuracoes if config != "ddr5_llc"
+        ]
+        if baseline not in configuracoes:
+            configuracoes.append(baseline)
     except ValueError as erro:
         parser.error(str(erro))
     nomes = {config: nome_configuracao(config) for config in configuracoes}
@@ -69,42 +80,37 @@ def main():
         print("Dados insuficientes para gerar o gráfico.")
         return
 
-    df_ipc = pd.DataFrame(dfs)
+    df_weighted_speedup = pd.DataFrame(dfs)
+    df_weighted_speedup = df_weighted_speedup.dropna()
 
-    # 2. Calcular o Speedup (Formato 1.x)
-    df_speedup = pd.DataFrame(index=df_ipc.index)
+    df_plot = pd.DataFrame(index=df_weighted_speedup.index)
     
     for config in configuracoes:
         nome = nomes[config]
-        if nome != nome_baseline and nome in df_ipc:
-            # Divisão direta: IPC / Baseline IPC (ex: resulta em 1.25, 0.95, 1.00)
-            df_speedup[nome] = df_ipc[nome] / df_ipc[nome_baseline]
+        if nome in df_weighted_speedup:
+            df_plot[nome] = df_weighted_speedup[nome]
 
-    # Ordenar o eixo X pela média de speedup (decrescente, similar à imagem)
-    df_speedup["Media"] = df_speedup.mean(axis=1)
-    df_speedup.sort_values("Media", ascending=False, inplace=True)
-    df_speedup.drop(columns=["Media"], inplace=True)
+    medias_aritmeticas = df_plot.mean(axis=0)
+    ordenacao = df_plot.mean(axis=1)
+    df_plot = df_plot.loc[ordenacao.sort_values(ascending=False).index]
+    df_plot.loc["Média Aritmética"] = medias_aritmeticas
 
     # 3. Configurar e Gerar o Gráfico
     plt.style.use('seaborn-v0_8-white') # Estilo mais limpo, fundo totalmente branco
     
-    fig, ax = plt.subplots(figsize=(20, 8))
+    fig, ax = plt.subplots(figsize=(20, 12))
 
     # Plota as barras agrupadas
-    df_speedup.plot(
+    df_plot.plot(
         kind='bar', 
         ax=ax, 
         width=0.8, 
-        color=[CORES.get(c, "#333333") for c in df_speedup.columns],
+        color=[CORES.get(c, "#333333") for c in df_plot.columns],
         edgecolor='white',
         linewidth=1
     )
 
-    # Linha de referência em 1.0 (Baseline)
-    ax.axhline(1.0, color='black', linewidth=1.2, linestyle='-', alpha=0.5)
-
-    # Limites do eixo Y (iniciando no 0.0)
-    max_y = df_speedup.max().max()
+    max_y = df_plot.max().max()
     margem_superior = max_y * 0.15
     ax.set_ylim(0, max_y + margem_superior)
 
@@ -122,14 +128,14 @@ def main():
                 f"{valor:.2f}",                    # Formato com 2 casas (ex: 1.25)
                 ha='center',                       
                 va='bottom',                             
-                fontsize=10,                        
-                rotation=0,                        # Texto horizontal como na imagem
+                fontsize=16,                        
+                rotation=90,
                 color='#111111'
             )
 
     # Estilização
-    ax.set_ylabel("Speedup", fontsize=16)
-    ax.set_xlabel("Applications", fontsize=16)
+    ax.set_ylabel("Weighted Speedup", fontsize=24)
+    ax.set_xlabel("Aplicações", fontsize=24)
     
     # Grid horizontal cinza claro, eixo atrás das barras
     ax.set_axisbelow(True)
@@ -137,8 +143,8 @@ def main():
     ax.grid(axis='x', visible=False)
 
     # Rotaciona os rótulos do eixo X em 90 graus
-    plt.xticks(rotation=90, ha='center', fontsize=14)
-    plt.yticks(np.arange(0, ax.get_ylim()[1], 0.2), fontsize=14) # Intervalos de 0.2
+    plt.xticks(rotation=90, ha='center', fontsize=22)
+    plt.yticks(np.arange(0, ax.get_ylim()[1], 1.0), fontsize=20)
 
     # Remove bordas superior e direita para visual mais limpo
     ax.spines['top'].set_visible(False)
@@ -146,9 +152,15 @@ def main():
     ax.spines['left'].set_color('#cccccc')
     ax.spines['bottom'].set_color('#cccccc')
 
-    ax.legend(title="", fontsize=14, loc='upper right')
+    ax.legend(
+        title="",
+        fontsize=14,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=max(1, len(df_plot.columns)),
+    )
 
-    plt.tight_layout()
+    plt.tight_layout(rect=(0, 0, 1, 0.92))
 
     # Salva com alta resolução
     args.saida.parent.mkdir(parents=True, exist_ok=True)

@@ -46,6 +46,7 @@ def carregar_dados(origem_dados, configuracoes):
         try:
             df = pd.read_csv(caminho_arquivo)
             df.set_index("Benchmark", inplace=True)
+            df = df.loc[~df.index.astype(str).str.lower().isin(["média", "media", "resumo"])]
             dfs[nome] = df["IPC"]
         except FileNotFoundError:
             print(f"[Erro] Arquivo não encontrado: {caminho_arquivo}")
@@ -64,6 +65,12 @@ def main():
         type=Path,
         default=Path("grafico_speedup_academico_benchmarks.png"),
         help="Nome ou caminho do arquivo PNG de destino.",
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=600,
+        help="Resolução do PNG em pontos por polegada (padrão: 600).",
     )
     parser.add_argument(
         "--configuracoes",
@@ -92,6 +99,7 @@ def main():
         return
 
     df_ipc = pd.DataFrame(dfs)
+    df_ipc = df_ipc.dropna()
 
     # 2. Calcular o Speedup (Formato 1.x)
     df_speedup = pd.DataFrame(index=df_ipc.index)
@@ -102,15 +110,15 @@ def main():
             # Divisão direta: IPC / Baseline IPC (ex: resulta em 1.25, 0.95, 1.00)
             df_speedup[nome] = df_ipc[nome] / df_ipc[nome_baseline]
 
-    # Ordenar o eixo X pela média de speedup (decrescente, similar à imagem)
-    df_speedup["Media"] = df_speedup.mean(axis=1)
-    df_speedup.sort_values("Media", ascending=False, inplace=True)
-    df_speedup.drop(columns=["Media"], inplace=True)
+    medias_aritmeticas = df_speedup.mean(axis=0)
+    ordenacao = df_speedup.mean(axis=1)
+    df_speedup = df_speedup.loc[ordenacao.sort_values(ascending=False).index]
+    df_speedup.loc["Média Aritmética"] = medias_aritmeticas
 
     # 3. Configurar e Gerar o Gráfico
     plt.style.use('seaborn-v0_8-white') # Estilo mais limpo, fundo totalmente branco
     
-    fig, ax = plt.subplots(figsize=(20, 8))
+    fig, ax = plt.subplots(figsize=(20, 12))
 
     # Plota as barras agrupadas
     df_speedup.plot(
@@ -144,14 +152,14 @@ def main():
                 f"{valor:.2f}",                    # Formato com 2 casas (ex: 1.25)
                 ha='center',                       
                 va='bottom',                             
-                fontsize=10,                        
-                rotation=0,                        # Texto horizontal como na imagem
+                fontsize=24,
+                rotation=90,
                 color='#111111'
             )
 
     # Estilização
-    ax.set_ylabel("Speedup", fontsize=16)
-    ax.set_xlabel("Applications", fontsize=16)
+    ax.set_ylabel("Speedup", fontsize=32)
+    ax.set_xlabel("Aplicações", fontsize=32)
     
     # Grid horizontal cinza claro, eixo atrás das barras
     ax.set_axisbelow(True)
@@ -159,8 +167,8 @@ def main():
     ax.grid(axis='x', visible=False)
 
     # Rotaciona os rótulos do eixo X em 90 graus
-    plt.xticks(rotation=90, ha='center', fontsize=14)
-    plt.yticks(np.arange(0, ax.get_ylim()[1], 0.2), fontsize=14) # Intervalos de 0.2
+    plt.xticks(rotation=90, ha='center', fontsize=28)
+    plt.yticks(np.arange(0, ax.get_ylim()[1], 0.2), fontsize=26) # Intervalos de 0.2
 
     # Remove bordas superior e direita para visual mais limpo
     ax.spines['top'].set_visible(False)
@@ -168,13 +176,19 @@ def main():
     ax.spines['left'].set_color('#cccccc')
     ax.spines['bottom'].set_color('#cccccc')
 
-    ax.legend(title="", fontsize=14, loc='upper right')
+    ax.legend(
+        title="",
+        fontsize=24,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=max(1, len(df_speedup.columns)),
+    )
 
-    plt.tight_layout()
+    plt.tight_layout(rect=(0, 0, 1, 0.92))
 
     # Salva com alta resolução
     args.saida.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(args.saida, dpi=300, bbox_inches='tight')
+    fig.savefig(args.saida, dpi=args.dpi, bbox_inches='tight')
     print(f"Gráfico gerado com sucesso: {args.saida}")
     
     plt.show()

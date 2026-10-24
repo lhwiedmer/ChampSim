@@ -1,0 +1,90 @@
+USO DOS SCRIPTS DE METRICAS
+
+Execute os comandos abaixo na raiz do repositorio. Os scripts de metricas leem os JSONs em results/ e geram CSVs em tables/. Os scripts de plot leem esses CSVs e aceitam opcoes de linha de comando.
+
+1. Metricas por trace (1 core)
+   python3 python_scripts/separate_traces.py
+   Entrada: results/1c/<config>/champsim/*.json
+   Saida: CSV em tables/1c_trace/<config>.csv
+   Exemplo: tables/1c_trace/ddr5.csv
+   Colunas: Trace, Classificacao, IPC, IA_Inst_per_Byte, LLC_MPKI, L2D_MPKI
+
+2. Metricas agregadas por benchmark (1 core)
+   python3 python_scripts/agregate.py
+   Entrada: results/1c/<config>/champsim/*.json, traces/weights-and-simpoints-speccpu/
+   e tables/1c_trace/<config>.csv (colunas Trace e MLP_L1D)
+   Saida: CSV em tables/1c_agregate/<config>.csv
+   Exemplo: tables/1c_agregate/ddr5.csv
+   Colunas: Benchmark, Classificacao, IPC, IA_Inst_per_Byte, LLC_MPKI, L2D_MPKI, LLC_Miss_Latency, MLP_L1D, Simpoints_Usados, Soma_Pesos_Original
+   MLP_L1D: media ponderada pelos pesos SimPoint, normalizada pelos pesos dos
+   traces com MLP disponivel. Sem pesos, usa media simples. A linha Media usa
+   a media aritmetica dos benchmarks com MLP disponivel. Dados ausentes geram
+   avisos e campos vazios, nao zeros. Os CSVs por trace precisam preservar a
+   coluna MLP_L1D; separate_traces.py atualmente nao gera essa coluna.
+
+3. Metricas de configuracoes multicore (8 cores)
+   python3 python_scripts/calculate_metrics_8c.py
+   Entrada: results/8c/<config>/champsim/*.json
+   Saida: CSV em tables/8c/<config>.csv
+   Exemplo: tables/8c/ddr5.csv
+   Colunas: Trace, Classificacao, IPC_Agregado, Weighted_Speedup, IA_Inst_per_Byte, LLC_MPKI, L2D_MPKI
+
+Em cada caso, <config> corresponde a ddr5, ddr5_llc, hbm1, hbm1_llc, hbm2, hbm2_llc, hbm3, hbm3_llc, hbm4 ou hbm4_llc. Os CSVs sao sobrescritos quando o script e executado novamente.
+
+4. Grafico de speedup por trace (1 core)
+   python3 python_scripts/plot_1c_traces.py
+   Entrada: CSVs em tables/1c_trace/
+   Saida: imagem PNG em grafico_speedup_academico.png
+
+5. Grafico de speedup agregado por benchmark (1 core)
+   python3 python_scripts/plot_1c.py
+   Entrada: CSVs em tables/1c_agregate/
+   Saida: imagem PNG em grafico_speedup_academico_benchmarks.png
+
+6. Gráfico de MPKI (1 core)
+   python3 python_scripts/plot_1c_mpki.py
+   Entrada: tables/1c_agregate/ddr5_llc.csv
+   Saida: imagem PNG em grafico_mpki_1c.png
+   Exibe LLC_MPKI e L2D_MPKI lado a lado por benchmark. Use --origem-dados
+   e --saida para personalizar os caminhos.
+
+7. Grafico de speedup (8 cores)
+   python3 python_scripts/plot_8c.py
+   Entrada: CSVs em tables/8c/
+   Saida: imagem PNG em grafico_speedup_8c.png
+
+O grafico de 8 cores exibe diretamente o Weighted Speedup de cada configuracao
+como barra, incluindo DDR5+LLC por padrao. A opcao --baseline escolhe a
+configuracao de referencia que deve ser incluida como barra. Nao ha linha de
+baseline no grafico.
+O Weighted Speedup e calculado com os IPCs single-core de DDR5+LLC para todas
+as configuracoes multicore. Para mudar a pasta dos CSVs, o caminho/nome do PNG
+ou as configuracoes, use --origem-dados, --saida e --configuracoes.
+
+Exemplos: comparar somente DDR5+LLC (baseline) com DDR5 sem LLC. Gere antes os
+CSVs correspondentes executando os scripts de metricas das secoes 1, 2 ou 3.
+
+Para gerar os cinco graficos comparativos de speedup e o grafico de MPKI de 1 core, salvando-os em
+~/tcc/TCC-latex/:
+   bash python_scripts/gerar_graficos_1c.sh
+   Arquivos gerados: 1c_hbm1.png, 1c_hbm2.png, 1c_hbm3.png, 1c_hbm4.png,
+   1c_ddr5.png e 1c_mpki.png.
+   Os PNGs sao gerados em 600 dpi por padrao. Para alterar a resolucao ao
+   executar plot_1c.py diretamente, use --dpi, por exemplo --dpi 300.
+
+Traces de 1 core:
+   python3 python_scripts/plot_1c_traces.py --origem-dados tables/1c_trace --configuracoes DDR5+LLC DDR5 --baseline DDR5+LLC --saida graficos/1c_traces_ddr5_vs_baseline.png
+   Saida: graficos/1c_traces_ddr5_vs_baseline.png
+
+   Por padrao, o grafico de traces exibe os valores numericos nas barras. Para
+   ocultar esses valores, adicione --sem-valores e escolha outro arquivo de saida:
+   python3 python_scripts/plot_1c_traces.py --origem-dados tables/1c_trace --configuracoes DDR5+LLC DDR5 --baseline DDR5+LLC --sem-valores --saida graficos/1c_traces_ddr5_vs_baseline_sem_valores.png
+   Saida: graficos/1c_traces_ddr5_vs_baseline_sem_valores.png
+
+Benchmarks agregados de 1 core:
+   python3 python_scripts/plot_1c.py --origem-dados tables/1c_agregate --configuracoes DDR5+LLC DDR5 --baseline DDR5+LLC --saida graficos/1c_agregado_ddr5_vs_baseline.png
+   Saida: graficos/1c_agregado_ddr5_vs_baseline.png
+
+Resultados de 8 cores:
+   python3 python_scripts/plot_8c.py --origem-dados tables/8c --configuracoes DDR5+LLC DDR5 --baseline DDR5+LLC --saida graficos/8c_ddr5_vs_baseline.png
+   Saida: graficos/8c_ddr5_vs_baseline.png

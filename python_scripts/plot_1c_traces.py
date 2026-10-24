@@ -34,6 +34,7 @@ def carregar_dados(origem_dados, configuracoes):
         try:
             df = pd.read_csv(caminho_arquivo)
             df.set_index("Trace", inplace=True)
+            df = df.loc[~df.index.astype(str).str.lower().isin(["média", "media", "resumo"])]
             dfs[nome] = df["IPC"]
         except FileNotFoundError:
             print(f"[Erro] Arquivo não encontrado: {caminho_arquivo}")
@@ -55,6 +56,11 @@ def main():
     )
     parser.add_argument("--configuracoes", nargs="+", default=CONFIGURACOES_PADRAO, help="Configurações a comparar.")
     parser.add_argument("--baseline", default="DDR5+LLC", help="Configuração usada como baseline.")
+    parser.add_argument(
+        "--sem-valores",
+        action="store_true",
+        help="Oculta os valores numéricos sobre as barras.",
+    )
     args = parser.parse_args()
 
     try:
@@ -70,6 +76,7 @@ def main():
         return
 
     df_ipc = pd.DataFrame(dfs)
+    df_ipc = df_ipc.dropna()
 
     # 2. Calcular o Speedup (Formato 1.x)
     df_speedup = pd.DataFrame(index=df_ipc.index)
@@ -80,10 +87,14 @@ def main():
             # Divisão direta: IPC / Baseline IPC (ex: resulta em 1.25, 0.95, 1.00)
             df_speedup[nome] = df_ipc[nome] / df_ipc[nome_baseline]
 
-    # Ordenar o eixo X pela média de speedup (decrescente, similar à imagem)
-    df_speedup["Media"] = df_speedup.mean(axis=1)
-    df_speedup.sort_values("Media", ascending=False, inplace=True)
-    df_speedup.drop(columns=["Media"], inplace=True)
+    medias_aritmeticas = df_speedup.mean(axis=0)
+    ordenacao = df_speedup.mean(axis=1)
+    df_speedup = df_speedup.loc[ordenacao.sort_values(ascending=False).index]
+    df_speedup.loc["Média Aritmética"] = medias_aritmeticas
+    df_speedup.index = [
+        Path(trace).name.split(".champsim", maxsplit=1)[0]
+        for trace in df_speedup.index
+    ]
 
     # 3. Configurar e Gerar o Gráfico
     plt.style.use('seaborn-v0_8-white') # Estilo mais limpo, fundo totalmente branco
@@ -108,28 +119,29 @@ def main():
     margem_superior = max_y * 0.15
     ax.set_ylim(0, max_y + margem_superior)
 
-    # --- Adicionando os números formatados como "1.xx" ---
-    for container in ax.containers:
-        for bar in container:
-            valor = bar.get_height()
-            
-            if pd.isna(valor) or valor == 0:
-                continue
+    if not args.sem_valores:
+        # --- Adicionando os números formatados como "1.xx" ---
+        for container in ax.containers:
+            for bar in container:
+                valor = bar.get_height()
                 
-            ax.text(
-                bar.get_x() + bar.get_width() / 2, 
-                valor + (max_y * 0.015),           # Distância curta acima da barra
-                f"{valor:.2f}",                    # Formato com 2 casas (ex: 1.25)
-                ha='center',                       
-                va='bottom',                             
-                fontsize=10,                        
-                rotation=0,                        # Texto horizontal como na imagem
-                color='#111111'
-            )
+                if pd.isna(valor) or valor == 0:
+                    continue
+                    
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2, 
+                    valor + (max_y * 0.015),           # Distância curta acima da barra
+                    f"{valor:.2f}",                    # Formato com 2 casas (ex: 1.25)
+                    ha='center',                       
+                    va='bottom',                             
+                    fontsize=10,                        
+                    rotation=90,
+                    color='#111111'
+                )
 
     # Estilização
     ax.set_ylabel("Speedup", fontsize=16)
-    ax.set_xlabel("Applications", fontsize=16)
+    ax.set_xlabel("Traces", fontsize=16)
     
     # Grid horizontal cinza claro, eixo atrás das barras
     ax.set_axisbelow(True)

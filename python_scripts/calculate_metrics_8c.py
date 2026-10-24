@@ -17,6 +17,7 @@ DIRETORIOS_RESULTADOS = [
     "results/8c/hbm4_llc/champsim"
 ]
 DIRETORIO_SAIDA = os.path.join("tables", "8c")
+CONFIGURACAO_BASELINE_SINGLE_CORE = "ddr5_llc"
 LIMITE_MPKI = 2.0  # Limiar padrão para classificar em Memory-Bound
 
 def somar_acessos(dicionario_cache, tipo_acesso):
@@ -67,52 +68,46 @@ def extrair_metricas(caminho_arquivo, ipc_single_core=None):
         if isinstance(dados, list):
             dados = dados[0]
             
-        sim = dados["sim"]
+        roi = dados["roi"]
         traces = dados.get("traces", [])
         
         # CORREÇÃO AQUI: Pega o nome do arquivo (ex: "llc-compatible")
         nome_trace = os.path.basename(caminho_arquivo).replace(".json", "")
         
-        num_cores = len(sim["cores"])
+        num_cores = len(roi["cores"])
         
         # 1. Instruções, Ciclos e IPC Agregado (System IPC)
         total_instrucoes = 0
         max_ciclos = 0
         
-        for core in sim["cores"]:
+        for core in roi["cores"]:
             total_instrucoes += core["instructions"]
             if core["cycles"] > max_ciclos:
                 max_ciclos = core["cycles"]
                 
         ipc_agregado = total_instrucoes / max_ciclos if max_ciclos > 0 else 0
-        weighted_speedup = calcular_weighted_speedup(sim["cores"], traces, ipc_single_core)
+        weighted_speedup = calcular_weighted_speedup(roi["cores"], traces, ipc_single_core)
         
         # 2. Intensidade Aritmética (CARM) Agregada
         total_acessos_l1d = 0
         for i in range(num_cores):
-            l1d = sim.get(f"cpu{i}_L1D", {})
+            l1d = roi.get(f"cpu{i}_L1D", {})
             total_acessos_l1d += somar_acessos(l1d, "LOAD") + somar_acessos(l1d, "WRITE")
             
         bytes_requisitados = total_acessos_l1d * 8 
         ia_agregada = total_instrucoes / bytes_requisitados if bytes_requisitados > 0 else 0
         
         # 3. LLC Misses e LLC MPKI
-        llc = sim.get("LLC", {})
+        llc = roi.get("LLC", {})
         tipos_requisicao = ["LOAD", "RFO", "PREFETCH", "WRITE", "TRANSLATION"]
         llc_misses_totais = somar_misses_reais(llc, tipos_requisicao)
         llc_mpki = (llc_misses_totais / total_instrucoes) * 1000 if total_instrucoes > 0 else 0
-        
-        # 4. Cálculo de Paralelismo via Lei de Little Agregado
-        mlp_l1d_total = 0
+
+        l2d_misses_totais = 0
         for i in range(num_cores):
-            l1d = sim.get(f"cpu{i}_L1D", {})
-            l1d_misses = somar_misses_reais(l1d, ["LOAD", "WRITE", "TRANSLATION"])
-            l1d_miss_latency = l1d.get("miss latency", 0.0)
-            if l1d_miss_latency is None:
-                l1d_miss_latency = 0.0
-            
-            mlp_core = (l1d_misses * l1d_miss_latency) / max_ciclos if max_ciclos > 0 else 0
-            mlp_l1d_total += mlp_core
+            l2d = roi.get(f"cpu{i}_L2C", {})
+            l2d_misses_totais += somar_misses_reais(l2d, tipos_requisicao)
+        l2d_mpki = (l2d_misses_totais / total_instrucoes) * 1000 if total_instrucoes > 0 else 0
         
         classificacao = "Memory-Bound" if llc_mpki > LIMITE_MPKI else "Compute-Bound"
         
@@ -123,8 +118,25 @@ def extrair_metricas(caminho_arquivo, ipc_single_core=None):
             "Weighted_Speedup": round(weighted_speedup, 4) if weighted_speedup is not None else None,
             "IA_Inst_per_Byte": round(ia_agregada, 4),
             "LLC_MPKI": round(llc_mpki, 4),
-            "MLP_L1D_Total": round(mlp_l1d_total, 4),
+            "L2D_MPKI": round(l2d_mpki, 4),
         }
+
+def adicionar_linha_media(resultados):
+    if not resultados:
+        return resultados
+
+    metricas = ["IPC_Agregado", "Weighted_Speedup", "IA_Inst_per_Byte", "LLC_MPKI", "L2D_MPKI"]
+    media = {}
+    for metrica in metricas:
+        valores = [resultado[metrica] for resultado in resultados if resultado[metrica] is not None]
+        media[metrica] = round(sum(valores) / len(valores), 4) if valores else None
+
+    resultados.append({
+        "Trace": "Resumo",
+        "Classificacao": "Memory-Bound" if media["LLC_MPKI"] > LIMITE_MPKI else "Compute-Bound",
+        **media
+    })
+    return resultados
 
 def processar_diretorio(diretorio):
     padrao_busca = os.path.join(diretorio, "*.json")
@@ -138,9 +150,12 @@ def processar_diretorio(diretorio):
     nome_config = partes_caminho[2] if len(partes_caminho) > 2 else "desconhecido"
     os.makedirs(DIRETORIO_SAIDA, exist_ok=True)
     arquivo_saida_csv = os.path.join(DIRETORIO_SAIDA, f"{nome_config}.csv")
-    ipc_single_core = carregar_ipcs_single_core(nome_config)
+    ipc_single_core = carregar_ipcs_single_core(CONFIGURACAO_BASELINE_SINGLE_CORE)
     if ipc_single_core is None:
-        print(f"[Aviso] Tabela single-core não encontrada para {nome_config}; Weighted Speedup ficará vazio.")
+        print(
+            f"[Aviso] Tabela single-core não encontrada para "
+            f"{CONFIGURACAO_BASELINE_SINGLE_CORE}; Weighted Speedup ficará vazio."
+        )
 
     resultados = []
     
@@ -156,10 +171,11 @@ def processar_diretorio(diretorio):
 
     # Ordenar por nome do Trace para ficar mais fácil de ler
     resultados = sorted(resultados, key=lambda x: x["Trace"])
+    resultados = adicionar_linha_media(resultados)
 
     # Escrever CSV
     with open(arquivo_saida_csv, 'w', newline='') as csvfile:
-        campos = ["Trace", "Classificacao", "IPC_Agregado", "Weighted_Speedup", "IA_Inst_per_Byte", "LLC_MPKI", "MLP_L1D_Total"]
+        campos = ["Trace", "Classificacao", "IPC_Agregado", "Weighted_Speedup", "IA_Inst_per_Byte", "LLC_MPKI", "L2D_MPKI"]
         writer = csv.DictWriter(csvfile, fieldnames=campos)
         writer.writeheader()
         writer.writerows(resultados)

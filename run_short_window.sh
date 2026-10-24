@@ -13,7 +13,7 @@ usage() {
 MODE="all"
 JOBS=25
 WARMUP=200000000
-SIM=50000000
+SIM=300000000
 
 while getopts ":m:j:w:s:h" opt; do
   case "$opt" in
